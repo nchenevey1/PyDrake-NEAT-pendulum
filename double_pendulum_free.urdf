@@ -1,0 +1,112 @@
+<?xml version="1.0"?>
+
+<robot xmlns="http://drake.mit.edu"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://drake.mit.edu ../../doc/drakeURDF.xsd" name="SimpleDoublePendulum">
+  <material name="black">
+    <color rgba="0 0 0 1" />
+  </material>
+  <material name="MITred">
+    <color rgba=".6 .2 .2 1" />
+  </material>
+
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0 0 0" />
+      <mass value="0.01" />
+      <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0" />
+    </inertial>
+  </link>
+  <joint name="base_weld" type="fixed">
+    <parent link="world" />
+    <child link="base_link" />
+  </joint>
+
+  <link name="slider_link">
+    <inertial>
+      <origin xyz="0 0 0" />
+      <mass value="2" />
+      <inertia ixx="0.0417" ixy="0" ixz="0" iyy="0.0677" iyz="0" izz="0.0677" />
+    </inertial>
+        <visual>
+      <origin xyz="0 0 0" />
+      <geometry>
+        <box size="0.75 0.5 0.5"/>
+      </geometry>
+      <material name="MITred" />
+    </visual>
+  </link>
+  <joint name="slider_joint" type="prismatic">
+    <origin xyz="0 0 0" />
+    <parent link="base_link" />
+    <child link="slider_link" />
+    <axis xyz="1 0 0" />
+    <limit lower="-3" upper="3"/>
+  </joint>
+
+  <link name="upper_arm_link">
+    <inertial> 
+      <origin xyz="0 0 -1" rpy="0 0 0" />
+      <mass value="0.5" />
+      <inertia ixx="0.5" ixy="0" ixz="0" iyy="0.0" iyz="0" izz="0.5"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -.5" rpy="0 0 0" />
+      <geometry>
+         <cylinder length="1" radius=".01" />
+      </geometry>
+      <material name="black" />
+    </visual> 
+    <visual>
+      <origin xyz="0 0 -1"/>
+      <geometry>
+        <sphere radius=".1"/>
+      </geometry>
+      <material name="MITred" />
+    </visual>
+  </link>
+  <joint name="shoulder_joint" type="continuous">
+    <parent link="slider_link"/>
+    <child link="upper_arm_link" />
+    <axis xyz="0 1 0" />
+  </joint>
+  <transmission type="SimpleTransmission" name="shoulder_trans">
+    <actuator name="shoulder_joint" />
+    <joint name="shoulder_joint" />
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+
+  <link name="lower_arm_link">
+    <inertial> 
+      <origin xyz="0 0 -1" rpy="0 0 0" />
+      <mass value="0.5" />
+      <inertia ixx="0.5" ixy="0" ixz="0" iyy="0.0" iyz="0" izz="0.5"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 -.5" rpy="0 0 0" />
+      <geometry>
+         <cylinder length="1" radius=".01" />
+      </geometry>
+      <material name="black" />
+    </visual> 
+    <visual>
+      <origin xyz="0 0 -1"/>
+      <geometry>
+        <sphere radius=".1"/>
+      </geometry>
+      <material name="MITred" />
+    </visual>
+  </link>
+  <joint name="elbow_joint" type="continuous">
+    <parent link="upper_arm_link"/>
+    <origin xyz="0 0 -1" />
+    <child link="lower_arm_link" />
+    <axis xyz="0 1 0" />
+  </joint>
+  <transmission type="SimpleTransmission" name="elbow_trans">
+    <actuator name="elbow_joint" />
+    <joint name="elbow_joint" />
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+
+</robot>
