@@ -5,7 +5,7 @@ Project inspired by: https://github.com/johnBuffer/Pendulum-NEAT/tree/main
 This project implements a custom **NeuroEvolution of Augmenting Topologies (NEAT)** strategy coupled with a dynamic **Physics Curriculum**. It utilizes **PyDrake** for simulation and **PyTorch** for graph compilation.
 The goal is to observe if a small neural topology can solve complex control tasks (like a cart and double pendulum) if trained via an evolutionary strategy that gradually increases in difficulty.
 
-#### Swing up:
+#### Initial learned swing up under low gravity and high drag:
 https://github.com/user-attachments/assets/5bb90e0b-ec8d-48d6-ac88-f8fd59f891be
 
 ## Table of Contents
