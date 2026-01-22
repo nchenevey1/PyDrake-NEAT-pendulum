@@ -113,7 +113,7 @@ To watch an agent (renders via planar visualizer):
 python visualize.py 1
 
 # Or visualize a specific checkpoint file
-python visualize.py models/compact_curriculum_001/history/gen_00100_score_250.pth
+python visualize.py models/compact_curriculum_001/history/gen_00100_score_10.pth
 ```
 
 ### Monitoring
@@ -131,6 +131,7 @@ Logs are stored in `models/<run_id>/logs.jsonl`.
 Key parameters in `config.py` for tuning:
 
 * `NUM_WORKERS`: Physical core count, or less (e.g., 6 or 8)
-* `POPULATION_SIZE`: 96; should be increased if stagnation occurs early
+* `POPULATION_SIZE`: 1200; can be modified depending on hardware and stagnant result
+* `SPECIES_TARGET`: 100; can be modified depending on population size
 * `DT`: 0.01s (Physics timestep)
 * `MUT_*_RATE`: Controls how aggressively the network topology changes
