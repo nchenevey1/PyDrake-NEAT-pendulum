@@ -1,0 +1,1 @@
+{"n_in": 9, "bias": [1.4235236609064474], "act": [0], "src": [0, 4], "dst": [9, 9], "w": [-6.741881062385121, 8.0], "delayed": [0, 0], "out_pos": 9, "action_mode": 0, "meta": {"arch": "neat"}, "n_params": 3}
