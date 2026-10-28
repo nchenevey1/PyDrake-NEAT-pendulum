@@ -1,8 +1,7 @@
 __pycache__/
 *.pyc
-runs/*/checkpoint.pkl
-runs/*/checkpoint.tmp
-runs/*/stdout.log
+# raw experiment output (summaries + selected policies are copied to results/)
+runs/
 models/
 .pytest_cache/
 *.gif
