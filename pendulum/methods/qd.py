@@ -38,6 +38,7 @@ class MAPElites(Method):
     def __init__(self, cfg: dict, n_in: int, rng: np.random.Generator):
         super().__init__({**MAP_ELITES_DEFAULTS, **(cfg or {})}, n_in, rng)
         self.template = build_arch(self.cfg["arch"], n_in, rng)
+        self.bound = self.template.flat_bounds()
         self.grid = tuple(self.cfg["grid"])
         n_cells = int(np.prod(self.grid))
         self.theta = np.zeros((n_cells, self.template.n_flat))
@@ -72,8 +73,9 @@ class MAPElites(Method):
             self._reeval_cells = None
             a = self.theta[self.rng.choice(filled, c["batch"])]
             b = self.theta[self.rng.choice(filled, c["batch"])]
-            self._pending = (a + c["iso_sigma"] * self.rng.standard_normal(a.shape)
-                             + c["line_sigma"] * self.rng.standard_normal((len(a), 1)) * (b - a))
+            self._pending = np.clip(a + c["iso_sigma"] * self.rng.standard_normal(a.shape)
+                                    + c["line_sigma"] * self.rng.standard_normal((len(a), 1)) * (b - a),
+                                    -self.bound, self.bound)
         return [self.template.with_flat(t) for t in self._pending]
 
     def tell(self, fitness, scores, stats) -> None:

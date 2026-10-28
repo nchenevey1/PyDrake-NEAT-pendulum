@@ -26,7 +26,7 @@ from typing import Dict, List, Optional
 import numba as nb
 import numpy as np
 
-from ..policy import ACT_TANH, GraphPolicy
+from ..policy import ACT_TANH, BIAS_CLIP, WEIGHT_CLIP, GraphPolicy
 from .base import Method
 
 NEAT_DEFAULTS = {
@@ -43,8 +43,8 @@ NEAT_DEFAULTS = {
     "sigma": 0.5,
     "sigma_stagnation": 10,
     "record_margin": 1.0,         # score improvement that resets stagnation
-    "weight_clip": 8.0,
-    "bias_clip": 4.0,
+    "weight_clip": WEIGHT_CLIP,
+    "bias_clip": BIAS_CLIP,
     "reset_prob": 0.1,            # prob. a mutated weight is re-drawn instead of perturbed
     "allow_recurrent": True,
     "init": "random",             # random | shared (legacy)

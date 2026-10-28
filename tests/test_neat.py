@@ -101,3 +101,16 @@ def test_cmaes_flat_fitness_does_not_restart():
     for _ in range(100):
         pols = m.ask(); f = np.zeros(len(pols)); m.tell(f, f, None)
     assert m.restarts == 0
+
+
+def test_cmaes_stays_in_parameter_box():
+    """On a scale-invariant (saturating) objective CMA-ES must not drift out of the box."""
+    from pendulum.methods.es import CMAES
+    m = CMAES({"arch": "mlp:2", "popsize": 8}, 9, np.random.default_rng(2))
+    for _ in range(1500):
+        pols = m.ask()
+        f = np.array([np.abs(p.get_flat()).sum() for p in pols])   # rewards ever-larger weights
+        m.tell(f, f, None)
+        for p in pols:
+            assert np.all(np.abs(p.get_flat()) <= p.flat_bounds() + 1e-12)
+    assert m.es.sigma < 50

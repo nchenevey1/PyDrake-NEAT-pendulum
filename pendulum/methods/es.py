@@ -43,10 +43,11 @@ class CMAES(Method):
                  template: Optional[GraphPolicy] = None):
         super().__init__({**CMAES_DEFAULTS, **(cfg or {})}, n_in, rng)
         self.template = template if template is not None else build_arch(self.cfg["arch"], n_in, rng)
+        self.bound = self.template.flat_bounds()
         self.restarts = 0
         self.last_stop = ""
         self.generation = 0
-        self._new_es(self.template.get_flat())
+        self._new_es(np.clip(self.template.get_flat(), -self.bound, self.bound))
         self._solutions = None
         self._champions: List[GraphPolicy] = []
 
@@ -62,25 +63,33 @@ class CMAES(Method):
         with contextlib.redirect_stdout(io.StringIO()):
             self.es = cma.CMAEvolutionStrategy(x0, c["sigma0"], opts)
 
+    def _clip(self, x):
+        return np.clip(x, -self.bound, self.bound)
+
     def ask(self) -> List[GraphPolicy]:
         self._solutions = self.es.ask()
-        pols = [self.template.with_flat(x) for x in self._solutions]
-        pols.append(self.template.with_flat(self.es.mean))   # distribution mean (not used for update)
+        pols = [self.template.with_flat(self._clip(x)) for x in self._solutions]
+        pols.append(self.template.with_flat(self._clip(self.es.mean)))   # mean (not used for update)
         return pols
 
     def tell(self, fitness, scores, stats) -> None:
         f = np.asarray(fitness)
-        self.es.tell(self._solutions, list(-f[:-1]))
-        best = int(np.argmax(f[:-1]))
-        self._champions = [self.template.with_flat(self.es.mean),
-                           self.template.with_flat(self._solutions[best])]
+        # Candidates are evaluated clipped to the parameter box; out-of-box candidates are
+        # ranked below all in-box ones (CMA-ES only uses ranks), which keeps the search
+        # distribution inside the box instead of drifting along flat saturated directions.
+        excess = np.array([np.sum(np.maximum(np.abs(x) - self.bound, 0.0) ** 2) for x in self._solutions])
+        penalty = np.where(excess > 0, 1e6 + excess, 0.0)
+        self.es.tell(self._solutions, list(-f[:-1] + penalty))
+        best = int(np.argmax(f[:-1] - penalty))
+        self._champions = [self.template.with_flat(self._clip(self.es.mean)),
+                           self.template.with_flat(self._clip(self._solutions[best]))]
         self.generation += 1
         if self.cfg["restarts"] and self.es.stop():
             # Local restart from the current mean: under a curriculum the mean carries all
             # progress so far, so a random re-initialisation would discard it.
             self.restarts += 1
             self.last_stop = ",".join(sorted(self.es.stop()))
-            self._new_es(np.array(self.es.mean))
+            self._new_es(self._clip(np.array(self.es.mean)))
 
     def champions(self) -> List[GraphPolicy]:
         return list(self._champions)

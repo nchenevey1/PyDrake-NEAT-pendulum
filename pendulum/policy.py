@@ -30,6 +30,12 @@ from typing import List, Optional, Sequence
 
 import numpy as np
 
+# Parameter box shared by all methods (NEAT clips its mutations to the same limits).
+# Keeps tanh units responsive, prevents unbounded drift into the saturated (scale-invariant)
+# regime, and keeps weights quantizable.
+WEIGHT_CLIP = 8.0
+BIAS_CLIP = 4.0
+
 ACT_TANH = 0
 ACT_IDENTITY = 1
 ACT_RELU = 2
@@ -98,6 +104,10 @@ class GraphPolicy:
     @property
     def n_flat(self) -> int:
         return len(self.w) + len(self.bias)
+
+    def flat_bounds(self, weight_clip: float = WEIGHT_CLIP, bias_clip: float = BIAS_CLIP) -> np.ndarray:
+        """Per-entry bound for get_flat() vectors (same limits as NEAT's mutation clipping)."""
+        return np.concatenate([np.full(len(self.w), weight_clip), np.full(len(self.bias), bias_clip)])
 
     def copy(self) -> "GraphPolicy":
         return self.with_flat(self.get_flat())
