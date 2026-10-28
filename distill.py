@@ -93,16 +93,52 @@ def dagger(expert, hidden, iters, n_ics, seed, max_data=400_000):
     return net, history
 
 
-def expert_rollout(expert, ic):
+def expert_rollout(expert, ic, act_noise=0.0, rng=None, return_labels=False):
+    """Expert rollout; with act_noise > 0 the *executed* action is perturbed (DART) while the
+    label stays the expert's clean action, so the data covers the expert's recovery tube."""
     from pendulum.rollout import physics_step
     expert.reset()
     s = np.array(ic, dtype=np.float64)
-    traj = [s.copy()]
+    traj, obs, labels = [s.copy()], [], []
     for _ in range(DEFAULT_TASK.max_steps):
-        a = expert(observe(s))
-        physics_step(s, a * TARGET_PHYSICS.max_force, TARGET_PHYSICS.g, TARGET_PHYSICS.drag, DEFAULT_TASK.dt)
+        o = observe(s)
+        a = expert(o)
+        obs.append(o); labels.append(a)
+        a_exec = float(np.clip(a + (act_noise * rng.standard_normal() if act_noise else 0.0), -1, 1))
+        physics_step(s, a_exec * TARGET_PHYSICS.max_force, TARGET_PHYSICS.g, TARGET_PHYSICS.drag,
+                     DEFAULT_TASK.dt)
         traj.append(s.copy())
+        k = len(traj) - 1
+        up = abs((s[1] - np.pi + np.pi) % (2 * np.pi) - np.pi) < DEFAULT_TASK.upright_tol and \
+            abs((s[2] + np.pi) % (2 * np.pi) - np.pi) < DEFAULT_TASK.upright_tol
+        if return_labels and (not np.all(np.isfinite(s)) or abs(s[0]) > DEFAULT_TASK.limit_x
+                              or (k > DEFAULT_TASK.swing_up_steps and not up)):
+            break   # the episode would have terminated here; later states are irrelevant
+    if return_labels:
+        o, l = np.array(obs), np.array(labels)
+        ok = np.all(np.isfinite(o), axis=1) & np.isfinite(l)
+        return o[ok], l[ok]
     return np.array(traj)
+
+
+def dart(expert, hidden, rounds, n_ics, seed, act_noise=0.15):
+    """DART (Laskey et al. 2017): behaviour cloning on noise-injected expert rollouts."""
+    torch.manual_seed(seed)
+    rng = np.random.default_rng(seed)
+    net = make_net(hidden)
+    X = np.zeros((0, 9)); Y = np.zeros(0)
+    history = []
+    for it in range(rounds):
+        for ic in sample_initial_states(n_ics, rng, DEFAULT_TASK.ic_noise):
+            o, a = expert_rollout(expert, ic, act_noise, rng, return_labels=True)
+            X = np.vstack([X, o]); Y = np.concatenate([Y, a])
+        loss = train(net, X, Y)
+        res = evaluate_policies([to_policy(net, hidden)], val_ics(64))[0]
+        history.append({"iter": it, "data": len(X), "mse": loss, "val_success": res["success_rate"],
+                        "val_streak_s": res["mean_streak_s"]})
+        print(f"  {hidden} it {it}: data {len(X)} mse {loss:.2e} val success {res['success_rate']:.2f} "
+              f"streak {res['mean_streak_s']:.1f}s", flush=True)
+    return net, history
 
 
 def main():
@@ -112,6 +148,8 @@ def main():
     ap.add_argument("--ics", type=int, default=16)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default="results/distill")
+    ap.add_argument("--mode", choices=["dagger", "dart"], default="dagger")
+    ap.add_argument("--noise", type=float, default=0.15, help="DART action-noise std")
     args = ap.parse_args()
     torch.set_num_threads(1)
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
@@ -120,10 +158,13 @@ def main():
     summary = {}
     for hs in args.hidden:
         hidden = [int(h) for h in hs.split(",")]
-        net, hist = dagger(expert, hidden, args.iters, args.ics, args.seed)
+        if args.mode == "dart":
+            net, hist = dart(expert, hidden, args.iters, args.ics, args.seed, args.noise)
+        else:
+            net, hist = dagger(expert, hidden, args.iters, args.ics, args.seed)
         pol = to_policy(net, hidden)
         pol.meta["arch"] = f"distilled mlp{hidden}"
-        name = "mlp" + "-".join(map(str, hidden))
+        name = f"{args.mode}_mlp" + "-".join(map(str, hidden))
         pol.save(out / f"{name}.json")
         test = evaluate_policies([pol], test_ics(256))[0]
         q8 = evaluate_policies([pol.quantized(8)], test_ics(256))[0]
@@ -132,7 +173,7 @@ def main():
                          "history": hist}
         print(f"{name}: {pol.n_params} params, TEST success {test['success_rate']:.3f}, "
               f"int8 {q8['success_rate']:.3f}", flush=True)
-        json.dump(summary, open(out / "summary.json", "w"), indent=1)
+        json.dump(summary, open(out / f"summary_{name}.json", "w"), indent=1)
 
 
 if __name__ == "__main__":
