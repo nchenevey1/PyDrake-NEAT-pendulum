@@ -7,3 +7,4 @@ models/
 *.gif
 *.mp4
 results/distill/log_*.txt
+results/experiments/*.log
