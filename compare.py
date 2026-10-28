@@ -132,6 +132,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs-dir", default="runs")
     ap.add_argument("--out", default="results")
+    ap.add_argument("--classic", default="results/classic/report.json",
+                    help="classic baseline report (python classic_baseline.py)")
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -141,6 +143,13 @@ def main():
     for r in rows:
         lines.append("| " + " | ".join(fmt(r[k]) for k, _ in COLS) + " |")
     table = "\n".join(lines)
+    if Path(args.classic).exists():
+        c = json.load(open(args.classic))
+        sr = lambda k: fmt(c.get(k, {}).get("success_rate"))
+        table += ("\n\n**Classic reference** (" + c["method"] + f", designed in {c['design_wall_s']} s, "
+                  f"{c['stored_numbers']} stored numbers incl. a {c['balance_lqr_gains']}-gain balance LQR): "
+                  f"TEST 20s {sr('test_20s')}, TEST 60s {sr('test_60s')}, wide IC {sr('test_wide_ic_0.2')}, "
+                  f"float32 {sr('float32_20s')}, int8 {sr('int8_20s')}")
     (out / "comparison.md").write_text(table + "\n")
     json.dump(rows, open(out / "comparison.json", "w"), indent=1, default=str)
     print(table)

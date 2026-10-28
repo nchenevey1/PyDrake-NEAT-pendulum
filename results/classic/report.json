@@ -1,0 +1,90 @@
+{
+ "method": "classic: trajopt (SNOPT) + TVLQR + LQR",
+ "design_wall_s": 3.0,
+ "stored_numbers": 3132,
+ "balance_lqr_gains": 6,
+ "val_64": {
+  "success_rate": 1.0,
+  "mean_streak_s": 18.017187500000002,
+  "min_streak_s": 18.01,
+  "upright_frac": 0.9008593749999999,
+  "swing_up_s": 1.9928125,
+  "streak_jitter_per_step": 0.001118116265831708,
+  "mean_abs_x": 0.07194713351016221,
+  "fail_track": 0.0,
+  "fail_fell": 0.0,
+  "n": 64
+ },
+ "test_20s": {
+  "success_rate": 1.0,
+  "mean_streak_s": 18.01765625,
+  "min_streak_s": 18.01,
+  "upright_frac": 0.9008828124999998,
+  "swing_up_s": 1.99234375,
+  "streak_jitter_per_step": 0.0011208408443688163,
+  "mean_abs_x": 0.07199162915456436,
+  "fail_track": 0.0,
+  "fail_fell": 0.0,
+  "n": 256
+ },
+ "test_60s": {
+  "success_rate": 1.0,
+  "mean_streak_s": 58.01765625,
+  "min_streak_s": 58.01,
+  "upright_frac": 0.9669609375000001,
+  "swing_up_s": 1.99234375,
+  "streak_jitter_per_step": 0.00034808362930986725,
+  "mean_abs_x": 0.023997209718200296,
+  "fail_track": 0.0,
+  "fail_fell": 0.0,
+  "n": 256
+ },
+ "test_wide_ic_0.2": {
+  "success_rate": 0.7265625,
+  "mean_streak_s": 13.0875,
+  "min_streak_s": 0.0,
+  "upright_frac": 0.6543945312499999,
+  "swing_up_s": 1.9959574468085106,
+  "streak_jitter_per_step": 0.0010542688237989391,
+  "mean_abs_x": 0.3374392272438014,
+  "fail_track": 0.2578125,
+  "fail_fell": 0.015625,
+  "n": 256
+ },
+ "nominal_ic": {
+  "success_rate": 1.0,
+  "mean_streak_s": 18.02,
+  "min_streak_s": 18.02,
+  "upright_frac": 0.901,
+  "swing_up_s": 1.99,
+  "streak_jitter_per_step": 0.0011342075409239629,
+  "mean_abs_x": 0.07175835487291532,
+  "fail_track": 0.0,
+  "fail_fell": 0.0,
+  "n": 1
+ },
+ "float32_20s": {
+  "success_rate": 1.0,
+  "mean_streak_s": 18.01765625,
+  "min_streak_s": 18.01,
+  "upright_frac": 0.9008828124999998,
+  "swing_up_s": 1.99234375,
+  "streak_jitter_per_step": 0.0011208405154058904,
+  "mean_abs_x": 0.07199163066339925,
+  "fail_track": 0.0,
+  "fail_fell": 0.0,
+  "n": 256
+ },
+ "int8_20s": {
+  "success_rate": 0.0,
+  "mean_streak_s": 0.0,
+  "min_streak_s": 0.0,
+  "upright_frac": 0.0,
+  "swing_up_s": null,
+  "streak_jitter_per_step": 0.0,
+  "mean_abs_x": 0.9721315173046864,
+  "fail_track": 1.0,
+  "fail_fell": 0.0,
+  "n": 256
+ }
+}
