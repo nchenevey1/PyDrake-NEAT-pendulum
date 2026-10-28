@@ -1,5 +1,8 @@
 # Experiment configs
 
+These configs use the original **physics curriculum**, which is now a baseline. See
+[docs/CURRICULUM.md](../docs/CURRICULUM.md) for the start-state curriculum that replaces it.
+
 Every file is deep-merged over `pendulum/config.py:DEFAULTS`; anything can be overridden
 from the command line (`--set budget.generations=500`). Method hyper-parameters not set
 here use the defaults in `pendulum/methods/*.py` (`*_DEFAULTS`).
