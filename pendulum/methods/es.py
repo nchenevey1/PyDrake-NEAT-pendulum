@@ -20,7 +20,7 @@ CMAES_DEFAULTS = {
     "popsize": 64,
     "sigma0": 0.5,
     "diagonal": False,      # sep-CMA for large parameter counts
-    "restarts": True,       # restart (same popsize) when pycma reports stagnation
+    "restarts": True,       # local restart (keep mean, reset sigma/covariance) when pycma stops
     "init_std": 1.0,
 }
 
@@ -42,9 +42,9 @@ class CMAES(Method):
     def __init__(self, cfg: dict, n_in: int, rng: np.random.Generator,
                  template: Optional[GraphPolicy] = None):
         super().__init__({**CMAES_DEFAULTS, **(cfg or {})}, n_in, rng)
-        self._from_spec = template is None
         self.template = template if template is not None else build_arch(self.cfg["arch"], n_in, rng)
         self.restarts = 0
+        self.last_stop = ""
         self.generation = 0
         self._new_es(self.template.get_flat())
         self._solutions = None
@@ -53,9 +53,10 @@ class CMAES(Method):
     def _new_es(self, x0: np.ndarray):
         c = self.cfg
         opts = {"popsize": c["popsize"], "seed": int(self.rng.integers(1, 2**31 - 1)),
-                "verbose": -9, "maxiter": float("inf"), "tolfun": 1e-12, "tolfunhist": 1e-12,
-                "tolflatfitness": 1000, "tolstagnation": 10**9,
-                "tolupsigma": 1e3}  # sigma divergence on flat/noisy fitness -> restart
+                "verbose": -9, "maxiter": float("inf"),
+                # The sparse score is often exactly flat (all zero): that is not convergence.
+                "tolfun": -1.0, "tolfunhist": -1.0, "tolflatfitness": 10**9, "tolstagnation": 10**9,
+                "tolupsigma": 1e3}  # sigma divergence on noisy fitness -> local restart
         if c["diagonal"]:
             opts["CMA_diagonal"] = True
         with contextlib.redirect_stdout(io.StringIO()):
@@ -75,19 +76,18 @@ class CMAES(Method):
                            self.template.with_flat(self._solutions[best])]
         self.generation += 1
         if self.cfg["restarts"] and self.es.stop():
+            # Local restart from the current mean: under a curriculum the mean carries all
+            # progress so far, so a random re-initialisation would discard it.
             self.restarts += 1
-            if self._from_spec:
-                x0 = build_arch(self.cfg["arch"], self.n_in, self.rng).get_flat()
-            else:
-                x0 = self.template.get_flat() + self.rng.normal(0, 0.1, self.template.n_flat)
-            self._new_es(x0)
+            self.last_stop = ",".join(sorted(self.es.stop()))
+            self._new_es(np.array(self.es.mean))
 
     def champions(self) -> List[GraphPolicy]:
         return list(self._champions)
 
     def info(self) -> Dict:
         return {"sigma": round(float(self.es.sigma), 4), "restarts": self.restarts,
-                "params": self.template.n_params}
+                "last_stop": self.last_stop, "params": self.template.n_params}
 
 
 class OpenAIES(Method):

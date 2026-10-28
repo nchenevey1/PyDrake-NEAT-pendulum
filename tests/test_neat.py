@@ -75,3 +75,29 @@ def test_compiled_genome_matches_legacy_cartnn():
                 assert abs(ref - ours) < 1e-5, (trial, t)
         checked += pol.is_recurrent
     assert checked > 0, "should include recurrent genomes"
+
+
+def test_cmaes_restart_keeps_progress():
+    """A restart must continue from the current mean, never from a random re-init."""
+    from pendulum.methods.es import CMAES
+    rng = np.random.default_rng(0)
+    m = CMAES({"arch": "linear", "popsize": 8, "sigma0": 0.2}, 9, rng)
+    target = np.full(m.template.n_flat, 3.0)
+    for _ in range(200):
+        pols = m.ask()
+        f = np.array([-np.sum((p.get_flat() - target) ** 2) for p in pols])
+        m.tell(f, f, None)
+    before = np.array(m.es.mean)
+    m.es.opts["tolupsigma"] = 1e-30  # force a stop
+    pols = m.ask(); f = np.zeros(len(pols)); m.tell(f, f, None)
+    assert m.restarts >= 1
+    assert np.linalg.norm(np.array(m.es.mean) - before) < 1.0
+    assert np.linalg.norm(before - target) < 1.0
+
+
+def test_cmaes_flat_fitness_does_not_restart():
+    from pendulum.methods.es import CMAES
+    m = CMAES({"arch": "mlp:2", "popsize": 8}, 9, np.random.default_rng(1))
+    for _ in range(100):
+        pols = m.ask(); f = np.zeros(len(pols)); m.tell(f, f, None)
+    assert m.restarts == 0
