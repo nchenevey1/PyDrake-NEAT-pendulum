@@ -77,7 +77,7 @@ class DoublePendulumEnv:
     Handles curriculum updates, observation normalization, and termination logic
     """
     
-    URDF_PATH = Path(__file__).parent / "double_pendulum_free.urdf"
+    URDF_PATH = Path(__file__).resolve().parent.parent / "assets" / "double_pendulum_free.urdf"
 
     # Normalization Constants (Estimated Upper Bounds)
     MAX_V_CART = Config.MAX_V_CART

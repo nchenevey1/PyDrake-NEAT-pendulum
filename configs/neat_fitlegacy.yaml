@@ -1,0 +1,13 @@
+# Ablation: identical to neat.yaml but with the original fitness
+# streak / (1 + sum|da| in streak), to validate the fitness change on the true objective.
+method: neat
+method_cfg:
+  pop_size: 1200
+  species_target: 100
+  delete_conn_rate: 0.05
+train:
+  fitness: legacy
+budget:
+  generations: 3000
+  env_steps: 15000000000
+  wall_hours: 4

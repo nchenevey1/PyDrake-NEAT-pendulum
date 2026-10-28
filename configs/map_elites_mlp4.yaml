@@ -1,0 +1,11 @@
+# Quality-diversity: MAP-Elites over mlp:4 weights (descriptor: peak tip height x mean |cart x|)
+# + legacy curriculum (archive re-evaluated on every curriculum advance).
+method: map_elites
+method_cfg:
+  arch: "mlp:4"
+  grid: [20, 10]
+  batch: 256
+budget:
+  generations: 5000
+  env_steps: 15000000000
+  wall_hours: 4

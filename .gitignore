@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+runs/*/checkpoint.pkl
+runs/*/checkpoint.tmp
+runs/*/stdout.log
+models/
+.pytest_cache/
+*.gif
+*.mp4

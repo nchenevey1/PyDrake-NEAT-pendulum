@@ -1,0 +1,10 @@
+numpy>=1.26
+numba>=0.60
+cma>=3.3
+PyYAML>=6.0
+matplotlib>=3.8
+pytest>=8
+# optional: reference simulator / visualization and legacy-equivalence tests
+drake>=1.30
+# optional: only for loading legacy .pth checkpoints and the legacy-equivalence test
+# torch

@@ -1,0 +1,11 @@
+# OpenAI-ES (Salimans et al. 2017 defaults) on a fixed mlp:8 policy + legacy curriculum.
+method: openai_es
+method_cfg:
+  arch: "mlp:8"
+  pairs: 64
+  sigma: 0.1
+  lr: 0.03
+budget:
+  generations: 10000
+  env_steps: 15000000000
+  wall_hours: 4

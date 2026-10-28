@@ -1,0 +1,16 @@
+# Hybrid: NEAT architecture search for 300 generations, then CMA-ES on the
+# weights of the best NEAT topology. Curriculum continues across the switch.
+method: neat_cma
+method_cfg:
+  switch_generation: 300
+  neat:
+    pop_size: 1200
+    species_target: 100
+    delete_conn_rate: 0.05
+  cmaes:
+    popsize: 64
+    sigma0: 0.2
+budget:
+  generations: 3000
+  env_steps: 15000000000
+  wall_hours: 4
