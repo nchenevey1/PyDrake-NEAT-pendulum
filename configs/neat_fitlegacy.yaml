@@ -6,7 +6,7 @@ method_cfg:
   species_target: 100
 train:
   fitness: legacy
-budget:
-  generations: 3000
-  env_steps: 15000000000
+budget:            # equal training-sample budget for every method
+  generations: null
+  env_steps: 5000000000
   wall_hours: 4

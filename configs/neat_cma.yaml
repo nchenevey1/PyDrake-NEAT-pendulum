@@ -1,6 +1,5 @@
 # Hybrid: NEAT architecture search for 300 generations, then CMA-ES on the
 # weights of the best NEAT topology. Curriculum continues across the switch.
-# Generation budget matches the CMA-ES configs (it is CMA-ES after generation 300).
 method: neat_cma
 method_cfg:
   switch_generation: 300
@@ -10,7 +9,7 @@ method_cfg:
   cmaes:
     popsize: 64
     sigma0: 0.2
-budget:
-  generations: 20000
-  env_steps: 15000000000
+budget:            # equal training-sample budget for every method
+  generations: null
+  env_steps: 5000000000
   wall_hours: 4

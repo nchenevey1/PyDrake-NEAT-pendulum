@@ -4,7 +4,7 @@ method: neat
 method_cfg:
   pop_size: 1200
   species_target: 100
-budget:
-  generations: 3000
-  env_steps: 15000000000
+budget:            # equal training-sample budget for every method
+  generations: null
+  env_steps: 5000000000
   wall_hours: 4

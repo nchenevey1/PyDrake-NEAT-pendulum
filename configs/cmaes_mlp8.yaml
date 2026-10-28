@@ -4,7 +4,7 @@ method_cfg:
   arch: "mlp:8"
   popsize: 64
   sigma0: 0.5
-budget:
-  generations: 20000
-  env_steps: 15000000000
+budget:            # equal training-sample budget for every method
+  generations: null
+  env_steps: 5000000000
   wall_hours: 4

@@ -5,7 +5,7 @@ method_cfg:
   arch: "mlp:4"
   grid: [20, 10]
   batch: 256
-budget:
-  generations: 5000
-  env_steps: 15000000000
+budget:            # equal training-sample budget for every method
+  generations: null
+  env_steps: 5000000000
   wall_hours: 4

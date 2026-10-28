@@ -5,7 +5,7 @@ method_cfg:
   pairs: 64
   sigma: 0.1
   lr: 0.03
-budget:
-  generations: 10000
-  env_steps: 15000000000
+budget:            # equal training-sample budget for every method
+  generations: null
+  env_steps: 5000000000
   wall_hours: 4
