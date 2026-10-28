@@ -29,6 +29,10 @@ class Method:
     def tell(self, fitness: np.ndarray, scores: np.ndarray, stats: np.ndarray) -> None:
         raise NotImplementedError
 
+    def penalty_sizes(self, policies: List[GraphPolicy]) -> np.ndarray:
+        """Size used by the fitness size penalty (default: deployable parameter count)."""
+        return np.array([p.n_params for p in policies])
+
     def champions(self) -> List[GraphPolicy]:
         """Candidates for deployment (validated on the target physics by the trainer)."""
         raise NotImplementedError

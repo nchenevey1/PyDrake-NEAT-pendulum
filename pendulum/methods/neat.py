@@ -15,8 +15,9 @@ stagnation culling, sigma "shock" on stagnation). Changes:
   the whole first generation was one cloned genome).
 * Optional `delete_conn_rate` removes connections (pressure toward small nets).
 * Genomes compile to `GraphPolicy` with the same in-place recurrent semantics
-  as `CartNN.forward`; nodes that cannot reach the output are pruned and the
-  size penalty counts only deployable parameters.
+  as `CartNN.forward`; nodes that cannot reach the output are pruned before
+  evaluation. The size penalty uses the legacy genome size by default
+  (`size_measure: effective` counts deployable parameters only).
 * Output uses a single tanh (`legacy_double_tanh: true` restores tanh(tanh(z))).
 """
 
@@ -49,6 +50,11 @@ NEAT_DEFAULTS = {
     "allow_recurrent": True,
     "init": "random",             # random | shared (legacy)
     "legacy_double_tanh": False,
+    # Size counted by the fitness penalty: "genome" = all node + connection genes, including
+    # disabled ones (legacy CartNN.param_count); "effective" = deployable parameters only.
+    # With "effective", crossover inheriting a disabled gene silently deletes a connection
+    # and is rewarded for it, which collapsed populations to ~5 params in early runs.
+    "size_measure": "genome",
     "tournament_size": 3,
     "tournament_frac": 0.75,
     "compat_c1": 1.0, "compat_c2": 1.0, "compat_c3": 0.4,
@@ -402,6 +408,11 @@ class NEAT(Method):
     def ask(self) -> List[GraphPolicy]:
         dt = self.cfg["legacy_double_tanh"]
         return [g.compile(dt) for g in self.population]
+
+    def penalty_sizes(self, policies):
+        if self.cfg["size_measure"] == "genome":
+            return np.array([len(g.conns) + len(g.nodes) for g in self.population])
+        return super().penalty_sizes(policies)
 
     def tell(self, fitness, scores, stats) -> None:
         c = self.cfg

@@ -134,7 +134,8 @@ class Trainer:
                 t_sim = time.time() - t0
                 scores = policy_scores(stats, tcfg["fitness"], task)
                 sizes = np.array([p.n_params for p in pols])
-                fitness = scores / (1.0 + tcfg["size_penalty"] * sizes)
+                pen_sizes = method.penalty_sizes(pols)
+                fitness = scores / (1.0 + tcfg["size_penalty"] * pen_sizes)
                 method.tell(fitness, scores, stats)
                 ratios = upright_ratio(stats, task)
                 advanced = curr.update(ratios)

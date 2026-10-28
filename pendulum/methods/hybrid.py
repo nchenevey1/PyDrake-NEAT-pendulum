@@ -44,6 +44,9 @@ class NEATThenCMA(Method):
         self.active.tell(fitness, scores, stats)
         self.generation += 1
 
+    def penalty_sizes(self, policies):
+        return self.active.penalty_sizes(policies)
+
     def champions(self) -> List[GraphPolicy]:
         return self.active.champions()
 

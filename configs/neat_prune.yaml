@@ -1,10 +1,11 @@
-# Variant of neat.yaml with a connection-deletion mutation (5 % of children), i.e. explicit
-# pressure toward smaller topologies on top of the size penalty.
+# Variant of neat.yaml with explicit pressure toward small topologies: a connection-deletion
+# mutation (5 % of children) and a size penalty on deployable parameters only.
 method: neat
 method_cfg:
   pop_size: 1200
   species_target: 100
   delete_conn_rate: 0.05
+  size_measure: effective
 budget:            # equal training-sample budget for every method
   generations: null
   env_steps: 5000000000

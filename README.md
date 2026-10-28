@@ -105,8 +105,9 @@ species stagnation, sigma shock, and recurrent connections. It adds:
 
 * per-run innovation tracking (fixes a resume bug, see below);
 * independent initial weights;
-* an optional connection-deletion mutation as pressure toward small networks;
-* pruning of nodes that cannot reach the output before evaluation and size accounting.
+* an optional connection-deletion mutation and an optional size penalty on deployable parameters
+  only (`neat_prune`; the default penalty counts all genes, as the original did);
+* pruning of nodes that cannot reach the output before evaluation.
 
 ## Code layout
 
