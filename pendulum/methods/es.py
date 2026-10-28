@@ -54,7 +54,8 @@ class CMAES(Method):
         c = self.cfg
         opts = {"popsize": c["popsize"], "seed": int(self.rng.integers(1, 2**31 - 1)),
                 "verbose": -9, "maxiter": float("inf"), "tolfun": 1e-12, "tolfunhist": 1e-12,
-                "tolflatfitness": 1000, "tolstagnation": 10**9}
+                "tolflatfitness": 1000, "tolstagnation": 10**9,
+                "tolupsigma": 1e3}  # sigma divergence on flat/noisy fitness -> restart
         if c["diagonal"]:
             opts["CMA_diagonal"] = True
         with contextlib.redirect_stdout(io.StringIO()):

@@ -3,7 +3,6 @@ method: neat
 method_cfg:
   pop_size: 1200
   species_target: 100
-  delete_conn_rate: 0.05
 curriculum:
   mode: none
 budget:

@@ -7,6 +7,7 @@ here use the defaults in `pendulum/methods/*.py` (`*_DEFAULTS`).
 | config | method | policy | curriculum | purpose |
 |---|---|---|---|---|
 | neat | custom NEAT | evolved topology | legacy | main NEAT run |
+| neat_prune | custom NEAT + connection deletion | evolved | legacy | stronger pressure toward small topologies |
 | neat_fitlegacy | custom NEAT | evolved | legacy | ablation: original fitness formula |
 | neat_nocurr | custom NEAT | evolved | none | ablation: does the curriculum help? |
 | neat_cma | NEAT 300 gens -> CMA-ES | evolved -> fixed | legacy | hybrid architecture search + weight tuning |

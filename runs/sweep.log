@@ -1,5 +1,0 @@
-[sweep] 22 jobs, 4 parallel
-[sweep] start neat_s0
-[sweep] start cmaes_mlp4_s0
-[sweep] start neat_cma_s0
-[sweep] start openai_es_mlp8_s0

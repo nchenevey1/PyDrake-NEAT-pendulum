@@ -1,10 +1,9 @@
-# Custom NEAT (legacy hyper-parameters, innovation tracking, connection deletion)
+# Custom NEAT (legacy hyper-parameters, growth-only like the original, innovation tracking)
 # + legacy physics curriculum + sparse streak fitness.
 method: neat
 method_cfg:
   pop_size: 1200
   species_target: 100
-  delete_conn_rate: 0.05
 budget:
   generations: 3000
   env_steps: 15000000000
