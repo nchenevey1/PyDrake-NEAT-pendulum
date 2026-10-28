@@ -1,0 +1,4 @@
+/tmp/claude-0/-home-user-PyDrake-NEAT-pendulum/c57fbcd2-b59e-5225-9cb1-b425c4b38dd7/scratchpad/clock_distill.py:41: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  f"mse {float(loss):.2e}  VAL success {r['success_rate']:.2f} streak {r['mean_streak_s']:.1f}s", flush=True)
+reactive-MLP 10-16-16-1 (465 params, 474700 samples, train 81s): mse 1.02e-02  VAL success 0.00 streak 0.0s

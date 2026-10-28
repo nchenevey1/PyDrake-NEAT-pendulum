@@ -1,0 +1,6 @@
+/tmp/claude-0/-home-user-PyDrake-NEAT-pendulum/c57fbcd2-b59e-5225-9cb1-b425c4b38dd7/scratchpad/clock_dagger.py:44: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  print(f"clock-DAgger H={H} it {it}: data {len(X)} wmse {float(loss):.2e} VAL success {r['success_rate']:.2f} "
+clock-DAgger H=64 it 0: data 128000 wmse 3.28e-03 VAL success 0.00 streak 0.0s swing-up reached 2.2036363636363636 (33s)
+clock-DAgger H=64 it 1: data 135004 wmse 2.99e-02 VAL success 0.00 streak 0.0s swing-up reached 1.7 (67s)
+clock-DAgger H=64 it 2: data 140018 wmse 3.42e-02 VAL success 0.00 streak 0.0s swing-up reached 1.8933333333333335 (101s)

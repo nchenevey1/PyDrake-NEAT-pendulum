@@ -1,0 +1,12 @@
+mlp:8 s0 gen 200 level k=210 (start t=2.10s) best norm-score 0.102 best full@level 0.00 | TARGET val success 0.00 (best 0.00) | 0.01B steps 34s restarts 0
+mlp:8 s0 gen 400 level k=200 (start t=2.00s) best norm-score 0.627 best full@level 0.25 | TARGET val success 0.00 (best 0.00) | 0.03B steps 81s restarts 0
+mlp:8 s0 gen 600 level k=185 (start t=1.85s) best norm-score 0.843 best full@level 0.75 | TARGET val success 0.00 (best 0.00) | 0.09B steps 149s restarts 0
+mlp:8 s0 gen 800 level k=175 (start t=1.75s) best norm-score 0.817 best full@level 0.00 | TARGET val success 0.00 (best 0.00) | 0.17B steps 235s restarts 0
+mlp:8 s0 gen 1000 level k=150 (start t=1.50s) best norm-score 0.859 best full@level 0.75 | TARGET val success 0.00 (best 0.00) | 0.28B steps 337s restarts 0
+mlp:8 s0 gen 1200 level k=145 (start t=1.45s) best norm-score 0.930 best full@level 0.50 | TARGET val success 0.00 (best 0.00) | 0.39B steps 447s restarts 0
+mlp:8 s0 gen 1400 level k=135 (start t=1.35s) best norm-score 0.371 best full@level 0.25 | TARGET val success 0.00 (best 0.00) | 0.50B steps 552s restarts 0
+mlp:8 s0 gen 1600 level k=135 (start t=1.35s) best norm-score 0.970 best full@level 1.00 | TARGET val success 0.00 (best 0.00) | 0.61B steps 655s restarts 0
+mlp:8 s0 gen 1800 level k=135 (start t=1.35s) best norm-score 0.737 best full@level 0.50 | TARGET val success 0.00 (best 0.00) | 0.73B steps 762s restarts 0
+mlp:8 s0 gen 2000 level k=135 (start t=1.35s) best norm-score 0.722 best full@level 0.50 | TARGET val success 0.00 (best 0.00) | 0.84B steps 871s restarts 0
+mlp:8 s0 gen 2200 level k=135 (start t=1.35s) best norm-score 0.817 best full@level 0.50 | TARGET val success 0.00 (best 0.00) | 0.96B steps 978s restarts 0
+mlp:8 s0 gen 2400 level k=135 (start t=1.35s) best norm-score 0.732 best full@level 0.50 | TARGET val success 0.00 (best 0.00) | 1.08B steps 1088s restarts 0
