@@ -6,3 +6,4 @@ models/
 .pytest_cache/
 *.gif
 *.mp4
+results/distill/log_*.txt

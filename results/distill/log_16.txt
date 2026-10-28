@@ -1,1 +1,0 @@
-  [16] it 0: data 32000 mse 1.70e-03 val success 0.00 streak 0.0s
