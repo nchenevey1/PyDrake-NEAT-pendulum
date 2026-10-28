@@ -58,6 +58,10 @@ class CMAES(Method):
                 # The sparse score is often exactly flat (all zero): that is not convergence.
                 "tolfun": -1.0, "tolfunhist": -1.0, "tolflatfitness": 10**9, "tolstagnation": 10**9,
                 "tolupsigma": 1e3}  # sigma divergence on noisy fitness -> local restart
+        # Cap the per-coordinate search std at a quarter of the box half-width. Under a moving
+        # (curriculum) objective CSA keeps growing sigma; once every sample lies outside the
+        # box the ranking only reflects box distance and the score is no longer optimized.
+        opts["maxstd"] = list(self.bound / 4.0)
         if c["diagonal"]:
             opts["CMA_diagonal"] = True
         with contextlib.redirect_stdout(io.StringIO()):
@@ -80,7 +84,7 @@ class CMAES(Method):
         excess = np.array([np.sum(np.maximum(np.abs(x) - self.bound, 0.0) ** 2) for x in self._solutions])
         penalty = np.where(excess > 0, 1e6 + excess, 0.0)
         self.es.tell(self._solutions, list(-f[:-1] + penalty))
-        best = int(np.argmax(f[:-1] - penalty))
+        best = int(np.argmax(f[:-1]))   # by the score of the policy actually evaluated (clipped)
         self._champions = [self.template.with_flat(self._clip(self.es.mean)),
                            self.template.with_flat(self._clip(self._solutions[best]))]
         self.generation += 1
