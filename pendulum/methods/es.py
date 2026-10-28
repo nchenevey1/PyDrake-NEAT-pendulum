@@ -85,11 +85,13 @@ class CMAES(Method):
                            self.template.with_flat(self._clip(self._solutions[best]))]
         self.generation += 1
         if self.cfg["restarts"] and self.es.stop():
-            # Local restart from the current mean: under a curriculum the mean carries all
-            # progress so far, so a random re-initialisation would discard it.
+            # Local restart around the best candidate evaluated this generation (a concrete,
+            # in-box policy with a measured score). Under a curriculum this keeps all progress;
+            # a random re-initialisation discards it, and the mean of a diverged distribution
+            # is not itself a good policy (observed: scores 3 s -> 0.02 s after restarting there).
             self.restarts += 1
             self.last_stop = ",".join(sorted(self.es.stop()))
-            self._new_es(self._clip(np.array(self.es.mean)))
+            self._new_es(self._clip(np.array(self._solutions[best])))
 
     def champions(self) -> List[GraphPolicy]:
         return list(self._champions)

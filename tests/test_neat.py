@@ -78,7 +78,7 @@ def test_compiled_genome_matches_legacy_cartnn():
 
 
 def test_cmaes_restart_keeps_progress():
-    """A restart must continue from the current mean, never from a random re-init."""
+    """A restart must continue from the incumbent, never from a random re-init."""
     from pendulum.methods.es import CMAES
     rng = np.random.default_rng(0)
     m = CMAES({"arch": "linear", "popsize": 8, "sigma0": 0.2}, 9, rng)
