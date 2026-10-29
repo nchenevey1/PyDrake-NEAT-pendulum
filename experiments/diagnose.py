@@ -8,6 +8,7 @@
   6. signal noise     how noisy is the sparse score on K=8 starts, and how narrow is the optimum?
 """
 import sys, numpy as np
+from dataclasses import replace
 sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent.parent))
 from pendulum.classic import ClassicController, rollout_controller, state_error, GOAL
 from pendulum.policy import GraphPolicy, pack
@@ -19,6 +20,8 @@ from pendulum.task import DEFAULT_TASK as T, TARGET_PHYSICS as P, observe
 
 pol = GraphPolicy.load(sys.argv[1] if len(sys.argv) > 1 else 'results/experiments/revcurr_mlp4_s1.json')
 ex = ClassicController.load('results/classic/controller.npz')
+T0 = T                                               # the classic controller uses the default scales
+T = replace(T, **pol.meta.get("obs_scale", {}))     # policies trained with rescaled observations
 rng = np.random.default_rng(0)
 full = T.max_steps
 
@@ -38,17 +41,17 @@ never = (st[:, S_FIRST_UP] < 0) | (st[:, S_FIRST_UP] > T.swing_up_steps)
 track = st[:, S_REASON] == 1
 print(f"  success {ok.mean():.3f} | never upright by 2.5 s {never.mean():.3f} | "
       f"upright in time but lost it {(~ok & ~never).mean():.3f}")
-print(f"  episodes ending off the track {track.mean():.3f} (median time {np.median(st[track, S_STEPS]) * T.dt:.2f} s); "
-      f"peak tip height of failures: median {np.median(st[~ok, S_MAX_HEIGHT]):.2f} m (upright = 2 m)")
+if (~ok).any():
+    print(f"  episodes ending off the track {track.mean():.3f} (median time {np.median(st[track, S_STEPS]) * T.dt:.2f} s); "
+          f"peak tip height of failures: median {np.median(st[~ok, S_MAX_HEIGHT]):.2f} m (upright = 2 m)")
 up = st[:, S_FIRST_UP] > 0
-print(f"  first upright time: median {np.median(st[up, S_FIRST_UP]) * T.dt:.2f} s; "
-      f"longest streak of failures: median {np.median(st[~ok, S_BEST_STREAK]) * T.dt:.2f} s")
+print(f"  first upright time: median {np.median(st[up, S_FIRST_UP]) * T.dt:.2f} s")
 
 print("== 3. success vs start-noise width (256 starts each) ==")
 for nz in [0.0, 0.002, 0.005, 0.01, 0.02, 0.05]:
     ic = rng.uniform(-nz, nz, (256, 6))
     s_l, _ = rollout(pack([pol]), ic, P, T)
-    s_c = rollout_controller(ex, ic[:64], P, T)
+    s_c = rollout_controller(ex, ic[:64], P, T0)
     print(f"  noise +-{nz:<5}: learned {np.mean(s_l[0, :, S_STEPS] >= full):.3f}   "
           f"classic {np.mean(s_c[:, S_STEPS] >= full):.3f}")
 
