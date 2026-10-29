@@ -24,7 +24,7 @@ model-based controller solves it at 100 %, so the task is feasible as defined.
 | Balance alone is easy | CMA-ES, start near upright: 10-param linear policy 100 % in 50 generations (~1 s) |
 | The physics curriculum fails | 6 methods × 5B steps (NEAT: 4 h wall cap at 2.9B): 0 % test success; best policies never balance even at their own training physics |
 | Imitating the classic controller fails | BC, DART, DAgger, with and without a clock input, 8–64 hidden units (89–5,000 params): 0 % |
-| A deadline-only curriculum fails | From rest, deadline 10 s → 2.5 s: no full success even at 10 s after 3,000+ generations |
+| A deadline-only curriculum is hard to enter | From rest, deadline 10 s → 2.5 s: the 45-param MLP never passed 10 s; the 89-param MLP passed it after 1.2B steps, then reached 2.6 s (0.1 s short) |
 | **A start-state curriculum works** | Real physics, starts moved backwards along a reference swing-up: 100 % mastery at each level; first neural successes on the real task (45 params, 2B steps: 9.0 % and 0.4 % test success over 2 seeds); progress also reproduces with a recurrent network |
 
 Details and reasoning: [CURRICULUM.md](CURRICULUM.md). Raw logs and scripts:
@@ -42,7 +42,8 @@ Every cell uses the same task, sparse score, budget (env steps) and evaluation.
 | S1 | Physics curriculum (original) | baseline, done: 0 % |
 | S2 | Start-state curriculum along a reference swing-up | **main candidate** |
 | S3 | Start-state curriculum without a reference (starts from backward random walks from upright) | to build: tests whether a demonstration is needed |
-| S4 | Deadline curriculum (from rest, deadline shrinks) | tested: fails, kept as a negative result |
+| S4 | Deadline curriculum (from rest, deadline shrinks) | tested: hard to enter, fast once in (best: 2.6 s) |
+| S5 | S2 with deadline slack, slack shrunk to 0 at the end | to build: combines the strengths of S2 and S4 |
 
 **Policies (size ladder):** linear (10 params) · mlp:2 (23) · mlp:4 (45) · mlp:8 (89) · rnn:4 (61) · NEAT (evolved topology)
 
@@ -73,8 +74,8 @@ are not carried forward: they underperformed CMA-ES on the same signal.
 
 - [ ] Enlarge the validation set (64 → 256 starts): at low success rates it mis-ranked policies (3 % val vs 9 % test)
 - [ ] Add the start-state curriculum (S2) and the mastery advancement rule to `pendulum/curriculum.py` as a config mode
-- [ ] Implement S3 (no reference trajectory)
-- [ ] Run the matrix (S0, S2, S3 × size ladder × CMA-ES/NEAT × 3 seeds)
+- [ ] Implement S5 (deadline slack) and S3 (no reference trajectory)
+- [ ] Run the matrix (S0, S2, S3, S4, S5 × size ladder × CMA-ES/NEAT × 3 seeds)
 - [ ] Compression pipeline (prune → fine-tune → quantize) and Pareto plot in `compare.py`
 - [ ] Robustness evaluation: mass ±10 %, sensor noise, one-step actuation delay
 - [ ] Optional: formal verification of the balance region for the smallest networks

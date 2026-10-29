@@ -16,7 +16,7 @@ Inspired by [johnBuffer/Pendulum-NEAT](https://github.com/johnBuffer/Pendulum-NE
 | Classic: trajectory optimization + LQR (reference) | 3,132 stored numbers | **100 %** |
 | Evolution + original physics curriculum (NEAT, CMA-ES, OpenAI-ES, MAP-Elites, hybrid) | 10–89 | 0 % |
 | Imitation of the classic controller (BC, DART, DAgger) | 89–5,000 | 0 % |
-| Evolution + deadline curriculum | 45–89 | 0 % |
+| Evolution + deadline curriculum | 45–89 | 0 % (89 params got to a 2.6 s deadline, 0.1 s short) |
 | **Evolution + start-state curriculum** (CMA-ES) | 45 | **up to 9 %** after 2B steps (2 seeds: 9 %, 0.4 %); under active development |
 
 The task is feasible; the open problem is finding a *small* network that solves it. The

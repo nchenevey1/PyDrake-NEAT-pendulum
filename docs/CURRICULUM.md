@@ -5,8 +5,9 @@
 | Question | Answer | Why |
 |---|---|---|
 | Change the 2.5 s swing-up time? | **No.** Keep it as the task definition. | The classic controller swings up in 2.0 s with 85 N, so it is feasible. Changing it changes the problem. |
-| Use the allowed swing-up time as the main curriculum knob? | **No.** | From rest with a 10 s deadline, CMA-ES found no full success in 3,000+ generations (45 and 89 params). A longer deadline does not create intermediate successes: the policy still has to discover swing-up *and* balance at once. |
-| Use it at all? | **Only as part of the start-state curriculum**, where the deadline is the time remaining on the reference (2.5 s − start time). An optional extra slack is listed under refinements. | Keeps every level a scaled-down copy of the real task. |
+| Use the allowed swing-up time as the main curriculum knob? | **Not on its own.** | From rest with a 10 s deadline the first level is very hard to enter: the policy must find swing-up *and* balance at once. The 45-param MLP never entered it in 2B steps; the 89-param MLP needed ~2,800 generations (1.2B steps). |
+| Is it useful at all? | **Yes, for the final timing squeeze.** | Once the 89-param MLP entered, the deadline fell from 10 s to 2.6 s in ~800 generations. It stalled 0.1 s short of the real task. |
+| How to combine them? | **Start-state curriculum with deadline slack**, then shrink the slack to 0. | The start-state curriculum enters easily (its first level is balance only) but slows near the start of the swing-up. The deadline curriculum enters badly but compresses timing quickly. |
 | Keep the physics curriculum? | **Only as a baseline.** | It never produced a policy that balances, even at its own training physics (see below). |
 | What should change? | **Where episodes start (start-state curriculum) and how advancement is decided (mastery rule).** | First and only neural success on the real task came from this. |
 
@@ -61,21 +62,22 @@ Values were set once from first principles and are **not tuned**:
   quickly, then **collapsed to zero** and could not recover.
 * With the mastery rule, every level was mastered at 100 %:
   * 45-param MLP, seed 0: from 2.1 s down to 0.45 s of reference time in 2B steps;
-  * 45-param MLP, seed 1: the same pace;
-  * 61-param RNN: advancing.
+  * 45-param MLP, seed 1: to 0.60 s, and **9.0 % test success** on the real task;
+  * 61-param RNN: to 1.30 s, no real-task success within 2B steps.
 
 ## Refinements to test next (in this order)
 
-1. **Adaptive step.** Progress slows in the early, energy-pumping part of the swing-up (last
-   ~0.5 s of the curriculum). Halve the step after each back-off (minimum 0.01 s).
-2. **Final phase at k = 0.** Once the real task is reached, keep 25 % replay of earlier levels
-   until the budget ends; select models only on real-task validation.
-3. **No reference (S3).** Build start states by random walks backward from upright, as in
+1. **Deadline slack (combined curriculum).** At every level give the remaining time plus a
+   slack (e.g. +1 s). After reaching k = 0, shrink the slack to 0 with the same mastery rule
+   (step 0.1 s). This uses each knob where it worked.
+2. **Adaptive step.** Progress slows in the early, energy-pumping part of the swing-up. Halve the
+   start-time step after each back-off (minimum 0.01 s).
+3. **Final phase at the real task.** Keep 25 % replay of earlier levels until the budget ends;
+   select models on a larger validation set (256 starts).
+4. **No reference (S3).** Build start states by random walks backward from upright, as in
    Florensa et al. This shows whether the classic trajectory is needed at all.
-4. **Several references.** Use reference swing-ups in both directions and from several
+5. **Several references.** Use reference swing-ups in both directions and from several
    optimizer seeds, so the network does not just learn one demonstration.
-5. **Deadline slack (optional).** At each level allow +0.3 s extra, annealed to 0 before the next
-   step back. Use only if (1) does not remove the stall near the start.
 
 ## What stays fixed
 
