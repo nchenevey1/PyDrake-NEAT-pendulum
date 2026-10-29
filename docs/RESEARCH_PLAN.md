@@ -25,7 +25,7 @@ model-based controller solves it at 100 %, so the task is feasible as defined.
 | The physics curriculum fails | 6 methods × 5B steps (NEAT: 4 h wall cap at 2.9B): 0 % test success; best policies never balance even at their own training physics |
 | Imitating the classic controller fails | BC, DART, DAgger, with and without a clock input, 8–64 hidden units (89–5,000 params): 0 % |
 | A deadline-only curriculum fails | From rest, deadline 10 s → 2.5 s: no full success even at 10 s after 3,000+ generations |
-| **A start-state curriculum works** | Real physics, starts moved backwards along a reference swing-up: 100 % mastery at each level; first non-zero success of any neural method on the real task (45 params: 1/256 test after 2B steps); the curriculum progress reproduces with a second seed and with a recurrent network |
+| **A start-state curriculum works** | Real physics, starts moved backwards along a reference swing-up: 100 % mastery at each level; first neural successes on the real task (45 params, 2B steps: 9.0 % and 0.4 % test success over 2 seeds); progress also reproduces with a recurrent network |
 
 Details and reasoning: [CURRICULUM.md](CURRICULUM.md). Raw logs and scripts:
 [`results/experiments/README.md`](../results/experiments/README.md).
@@ -71,6 +71,7 @@ are not carried forward: they underperformed CMA-ES on the same signal.
 
 ## Next steps
 
+- [ ] Enlarge the validation set (64 → 256 starts): at low success rates it mis-ranked policies (3 % val vs 9 % test)
 - [ ] Add the start-state curriculum (S2) and the mastery advancement rule to `pendulum/curriculum.py` as a config mode
 - [ ] Implement S3 (no reference trajectory)
 - [ ] Run the matrix (S0, S2, S3 × size ladder × CMA-ES/NEAT × 3 seeds)

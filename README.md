@@ -17,7 +17,7 @@ Inspired by [johnBuffer/Pendulum-NEAT](https://github.com/johnBuffer/Pendulum-NE
 | Evolution + original physics curriculum (NEAT, CMA-ES, OpenAI-ES, MAP-Elites, hybrid) | 10–89 | 0 % |
 | Imitation of the classic controller (BC, DART, DAgger) | 89–5,000 | 0 % |
 | Evolution + deadline curriculum | 45–89 | 0 % |
-| **Evolution + start-state curriculum** (CMA-ES) | 45 | **first successes**; under active development |
+| **Evolution + start-state curriculum** (CMA-ES) | 45 | **up to 9 %** after 2B steps (2 seeds: 9 %, 0.4 %); under active development |
 
 The task is feasible; the open problem is finding a *small* network that solves it. The
 start-state curriculum is the main line of work. See the [research plan](docs/RESEARCH_PLAN.md).
