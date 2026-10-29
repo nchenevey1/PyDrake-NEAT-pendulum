@@ -25,6 +25,7 @@ model-based controller solves it at 100 %, so the task is feasible as defined.
 | The physics curriculum fails | 6 methods × 5B steps (NEAT: 4 h wall cap at 2.9B): 0 % test success; best policies never balance even at their own training physics |
 | Imitating the classic controller fails | BC, DART, DAgger, with and without a clock input, 8–64 hidden units (89–5,000 params): 0 % |
 | A deadline-only curriculum is hard to enter | From rest, deadline 10 s → 2.5 s: the 45-param MLP never passed 10 s; the 89-param MLP passed it after 1.2B steps, then reached 2.6 s (0.1 s short) |
+| **Input scaling was the main blocker** | Velocities were divided by 50 and 90 while their range is ±10, so the ±8 weight box could not express the needed feedback gains. Rescaling to 12: a 45-param MLP reached **100 % test** (1 of 4 runs); see [DIAGNOSIS.md](DIAGNOSIS.md) |
 | **A start-state curriculum works** | Real physics, starts moved backwards along a reference swing-up: 100 % mastery at each level; first neural successes on the real task (45 params, 2B steps: 9.0 % and 0.4 % test success over 2 seeds); progress also reproduces with a recurrent network |
 
 Details and reasoning: [CURRICULUM.md](CURRICULUM.md). Raw logs and scripts:
@@ -65,13 +66,15 @@ are not carried forward: they underperformed CMA-ES on the same signal.
 
 ## Success criteria
 
-* Primary: ≥ 90 % test success (20 s) with ≤ 100 parameters.
+* Primary: ≥ 90 % test success (20 s) with ≤ 100 parameters. **Met once** (45 params, 100 %); now required in most seeds.
 * Secondary: ≥ 80 % at 60 s; int8 within 5 % of float; robustness to ±10 % mass error.
 * Research result: a ranking of S0–S4 by success per env step, with 3 seeds and a statement of
   which signals fail and why.
 
 ## Next steps
 
+- [ ] Make velocity scale 12 the default observation and store the scales with every policy (all methods, all curricula)
+- [ ] Adaptive start-time step after a back-off (3 of 4 rescaled runs stalled at 0.55 s)
 - [ ] Enlarge the validation set (64 → 256 starts): at low success rates it mis-ranked policies (3 % val vs 9 % test)
 - [ ] Add the start-state curriculum (S2) and the mastery advancement rule to `pendulum/curriculum.py` as a config mode
 - [ ] Implement S5 (deadline slack) and S3 (no reference trajectory)

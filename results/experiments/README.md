@@ -12,6 +12,8 @@ Run from the repository root, e.g. `python experiments/reverse_curriculum.py mlp
 
 | `experiments/deadline_curriculum.py mlp:4 0 2.0` | Deadline curriculum: start from rest, swing-up deadline 10 s → 2.5 s, target physics | Hard to enter, fast once in: mlp:4 never passed the 10 s level (2B steps); mlp:8 passed it after ~2,800 gens (1.2B steps), then reached 2.6 s in ~800 gens and stalled 0.1 s short of the task. |
 | `experiments/reverse_curriculum.py mlp:4 1 2.0`, `rnn:4 0 2.0` | Does the start-state curriculum reproduce? | Yes: seed 1 reached starts 0.60 s into the swing-up and **9.0 % test success** (seed 0: 0.4 %); the RNN reached 1.30 s with no real-task success in 2B steps. |
+| `experiments/reverse_curriculum.py mlp:4 0 2.0 12` (4th arg = velocity observation scale) | Was the legacy velocity scaling (/50, /90) blocking learning? | Yes. With scale 12 every run got further back; mlp:4 seed 0 solved the real task: **100 % test** (60 s 100 %, Drake 16/16, int8 91 %, 43 params after pruning). Seeds 1, 2 and mlp:8 stalled at 0.55 s (1.2 %, 0 %, 1.6 %). |
+| `experiments/diagnose.py [policy.json]` | Where and why does a learned policy fail? | Gain ceiling, failure phase, start-noise funnel, chaos, LQR-catch, score noise, weight-noise sensitivity. See [docs/DIAGNOSIS.md](../../docs/DIAGNOSIS.md). |
 
 Earlier logs are in this folder; logs written after the switch to `.gitignore` are kept locally only.
 Design conclusions: [docs/CURRICULUM.md](../../docs/CURRICULUM.md).

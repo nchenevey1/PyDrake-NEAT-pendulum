@@ -17,15 +17,18 @@ Inspired by [johnBuffer/Pendulum-NEAT](https://github.com/johnBuffer/Pendulum-NE
 | Evolution + original physics curriculum (NEAT, CMA-ES, OpenAI-ES, MAP-Elites, hybrid) | 10–89 | 0 % |
 | Imitation of the classic controller (BC, DART, DAgger) | 89–5,000 | 0 % |
 | Evolution + deadline curriculum | 45–89 | 0 % (89 params got to a 2.6 s deadline, 0.1 s short) |
-| **Evolution + start-state curriculum** (CMA-ES) | 45 | **up to 9 %** after 2B steps (2 seeds: 9 %, 0.4 %); under active development |
+| Evolution + start-state curriculum (CMA-ES), original observation scales | 45 | up to 9 % after 2B steps (2 seeds: 9 %, 0.4 %) |
+| **Same, velocity observations rescaled to the real range** | **45** | **100 %** in 1 of 4 runs (1.1B steps, 9 min); others 0–1.6 % |
 
-The task is feasible; the open problem is finding a *small* network that solves it. The
-start-state curriculum is the main line of work. See the [research plan](docs/RESEARCH_PLAN.md).
+A 45-parameter network can solve the task (100 % test, 60 s, Drake-verified, 43 params after
+pruning). The open problem is finding it *reliably*. Why earlier runs failed and what changed:
+[docs/DIAGNOSIS.md](docs/DIAGNOSIS.md). Plan: [research plan](docs/RESEARCH_PLAN.md).
 
 ## Documentation
 
 | Document | Contents |
 |---|---|
+| [docs/DIAGNOSIS.md](docs/DIAGNOSIS.md) | goal and research relevance, why learning failed (measured), what to change |
 | [docs/RESEARCH_PLAN.md](docs/RESEARCH_PLAN.md) | question, findings so far, experiment matrix, success criteria, next steps |
 | [docs/CURRICULUM.md](docs/CURRICULUM.md) | curriculum and advancement design, swing-up deadline decisions |
 | [docs/TASK_AND_EVALUATION.md](docs/TASK_AND_EVALUATION.md) | task constants, sparse score, evaluation protocol, classic reference |

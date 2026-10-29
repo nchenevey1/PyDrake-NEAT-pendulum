@@ -53,25 +53,57 @@ Earlier failures, for completeness:
 **One-line diagnosis:** the training signal (start-state curriculum + mastery) is sound. The
 networks were blind to the variable that matters most in the energy-pumping phase (velocity) and
 could not express the gains needed. They memorised an open-loop trajectory, which chaos and the
-track limit punish.
+track limit punish. Section 3 tests this by changing only the velocity scale.
 
 ## 3. Test of the main hypothesis
 
 Same start-state curriculum, same 2B budget, only the velocity observation scale changed from
 (50, 90) to 12 for both cart and poles (`python experiments/reverse_curriculum.py mlp:4 0 2.0 12`).
 
-RESULTS_TABLE
+| Run (CMA-ES, 2B steps) | Old scales: closest start reached / test | Velocity scale 12: closest start / test |
+|---|---|---|
+| mlp:4 (45 params) seed 0 | 0.45 s / 0.4 % | **0 s (real task) / 100 %**, after 1.08B steps (9 min) |
+| mlp:4 seed 1 | 0.60 s / 9.0 % | 0.30 s / 1.2 % |
+| mlp:4 seed 2 | (not run) | 0.55 s / 0 % |
+| mlp:8 (89 params) seed 0 | 1.30 s / 0 % | 0.55 s / 1.6 % |
+
+**Every rescaled run got further back than any old-scale run of the same size, and faster.**
+One of four runs solved the task. The other three stalled at the same point, 0.50–0.55 s into
+the reference, where the reference reverses force from −81 N to +61 N.
+
+The solved controller (`results/experiments/revcurr_mlp4_s0_v12.json`, 45 params), independently
+re-checked:
+
+| Check | Result |
+|---|---|
+| Test 20 s / 60 s / from exact rest | **100 % / 100 % / 100 %** |
+| Replayed in Drake (16 starts) | 16/16 |
+| int8 / int6 / int4 | 91 % / 55 % / 0 % |
+| Greedy pruning | 43 params, 99 % (int8 99 %) |
+| Wide starts ±0.2 | 29 % (classic 73 %) |
+| Weight noise σ = 0.01 / 0.03 | 99 % / 76 % median (old-scale 9 % policy: 0.2 % / 0 %) |
+| Model error: g + 5 % / force limit 90 N / drag 0.1 | 92 % / 70 % / 0 % |
+| Behaviour | follows the reference's pumping pattern to ~1.5 s, then catches earlier (upright at 1.9 s) |
+
+What this does and does not show:
+* The input-conditioning diagnosis is confirmed. The optimum is now wide, and the policy has a
+  real feedback funnel (100 % at every start-noise width).
+* The method is **not yet reliable**: 1 of 4 runs. The next bottleneck is the 0.55 s level.
+* The policy is robust to small parameter changes but not to drag. Robustness is a separate goal
+  (see section 4).
 
 ## 4. What to change (ordered by evidence and cost)
 
 | Cause | Change | Keeps the sparse signal? |
 |---|---|---|
-| Gain ceiling, aliasing (1, 2) | **Observation scales from the real state range** (fixed constants, so deployment is unchanged). Same for every method; makes int8 easier too. | yes |
+| Gain ceiling, aliasing (1, 2) | **Observation scales from the real state range** (fixed constants, so deployment is unchanged). Same for every method. **Confirmed (section 3)**: make it the default and store the scales with each policy. | yes |
+| Common stall at 0.55 s (section 3) | **Adaptive step**: after a back-off, halve the start-time step (5 → 2 → 1 control steps), so the force reversal is crossed gradually. Then longer runs. | yes |
 | Aliasing in the pumping phase (2) | **Better reference swing-ups:** smoother (penalise force changes), leave track margin (\|x\| ≤ 1.5 m instead of 2.15 m), both directions, several optimiser seeds. Then the **no-reference** variant (S3) to see if a demonstration is needed. | yes |
 | Luck instead of feedback (3, 4, 5) | **Mastery on more starts at the final levels** (32–64), and keep 25 % replay of earlier levels to the end. Model selection on 256 validation starts. | yes |
 | Score noise (7) | Common random starts already; add more starts per candidate only at hard levels (adaptive K). | yes |
 | Timing (deadline curriculum result) | **Deadline slack** (S5): +1 s while moving the start back, then shrink to 0. | yes |
 | Short runs (8) | **Long runs:** 20B+ env steps (~3 h/core), 3 seeds, once the above is in. | yes |
+| Robustness (drag 0.1 → 0 %) | Only after reliability: evaluate (and later train) with ±10 % mass, small drag and sensor noise. | yes |
 | Size | Only after competence: prune, fine-tune, quantise (see [RESEARCH_PLAN.md](RESEARCH_PLAN.md)). | yes |
 
 Not recommended now:
