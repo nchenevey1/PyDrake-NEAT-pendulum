@@ -17,6 +17,12 @@ from pendulum.evaluation import evaluate_policies, val_ics, test_ics
 from pendulum.task import DEFAULT_TASK as T, TARGET_PHYSICS as P
 numba.set_num_threads(1)
 arch = sys.argv[1]; seed = int(sys.argv[2]); budget = float(sys.argv[3]) * 1e9
+# optional 4th argument: velocity observation scale (cart m/s and pole rad/s mapped to +-1);
+# the task default (50, 90) compresses the real velocity range (~+-10) to ~+-0.1
+vscale = float(sys.argv[4]) if len(sys.argv) > 4 else None
+if vscale:
+    T = replace(T, max_v_cart=vscale, max_w_pole=vscale)
+tag = f'{arch.replace(":", "")}_s{seed}' + (f'_v{vscale:g}' if vscale else '')
 step, pass_frac, K = 5, 0.6, 8
 ex = ClassicController.load('results/classic/controller.npz')
 N_up = 210                                # nominal is upright at rest from step ~210 (2.1 s)
@@ -58,15 +64,16 @@ while steps < budget:
         sr = max(r["success_rate"] for r in res)
         if sr > best_val[0]:
             best_val = (sr, champs[int(np.argmax([r["success_rate"] for r in res]))])
-        print(f"{arch} s{seed} gen {g} level k={k} (start t={k*T.dt:.2f}s) best norm-score {sc.max():.3f} "
+        print(f"{tag} gen {g} level k={k} (start t={k*T.dt:.2f}s) best norm-score {sc.max():.3f} "
               f"best full@level {full_best:.2f} | TARGET val success {sr:.2f} (best {best_val[0]:.2f}) "
               f"| {steps/1e9:.2f}B steps {time.time()-t0:.0f}s restarts {m.restarts}", flush=True)
         if best_val[0] >= 0.99:
             break
 if best_val[1] is not None:
     t = evaluate_policies([best_val[1]], test_ics(256), P, T)[0]
-    print(f"FINAL {arch} s{seed}: best val {best_val[0]:.2f}, TEST success {t['success_rate']:.3f}, "
+    print(f"FINAL {tag}: best val {best_val[0]:.2f}, TEST success {t['success_rate']:.3f}, "
           f"60s n/a, params {best_val[1].n_params}", flush=True)
-    best_val[1].save(f'results/experiments/revcurr_{arch.replace(":","")}_s{seed}.json')
+    best_val[1].meta["obs_scale"] = {"max_v_cart": T.max_v_cart, "max_w_pole": T.max_w_pole}
+    best_val[1].save(f'results/experiments/revcurr_{tag}.json')
 else:
-    print(f"FINAL {arch} s{seed}: never succeeded on target validation", flush=True)
+    print(f"FINAL {tag}: never succeeded on target validation", flush=True)
