@@ -1,1 +1,7 @@
-{"name": "mlp45", "rho0": "", "shards": 10, "grid": 4, "minw": 0.01, "sanity_n": 1000000}
+{"jobs": [
+ {"name": "mlp45", "rho0": 1.6151688736209255, "shards": 10, "minw": 0.01, "sanity_n": 1000000},
+ {"name": "mlp45_pruned", "rho0": "", "shards": 10, "minw": 0.01, "sanity_n": 1000000},
+ {"name": "mlp45_int8", "rho0": "", "shards": 10, "minw": 0.01, "sanity_n": 1000000},
+ {"name": "mlp45_int6", "rho0": "", "shards": 10, "minw": 0.01, "sanity_n": 1000000},
+ {"name": "lqr", "rho0": "", "shards": 10, "minw": 0.01, "sanity_n": 1000000}
+]}

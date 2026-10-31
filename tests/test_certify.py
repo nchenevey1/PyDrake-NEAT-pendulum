@@ -198,3 +198,20 @@ def test_certificate_rejects_too_large_level(mlp, mlp_setup):
     rhos, stats, worst = VF.bnb_many(pp.data, BL, BH, r2 * 1.1, eps * eps, 1e-3, 1e-6, 2_000_000)
     assert 0 <= rhos[0] < r2
     assert stats[0, 5] > 0          # proven counterexample(s) at box centers
+
+
+def test_lqr_batch_sim_matches_classic_rollout():
+    from dataclasses import replace
+    from pendulum.classic import ClassicController, rollout_controller
+    from pendulum.certify.model import simulate_lqr_batch
+    from pendulum.rollout import S_STEPS
+    from pendulum.task import DEFAULT_TASK, TARGET_PHYSICS
+    ctrl = ClassicController.load(ROOT / "results/classic/controller.npz")
+    ctrl.u_nom = ctrl.u_nom[:0]
+    task = replace(DEFAULT_TASK, duration=3.0, swing_up_time=0.0)
+    rng = np.random.default_rng(8)
+    X = np.array([0, math.pi, 0, 0, 0, 0]) + rng.normal(size=(40, 6)) * [.3, .08, .08, .5, .8, .8]
+    ref = rollout_controller(ctrl, X, TARGET_PHYSICS, task)[:, S_STEPS] >= task.max_steps
+    ok = simulate_lqr_batch(ctrl.K_bal, X, task.max_steps, from_lqr(K_LQR), task.upright_tol)
+    assert ref.any() and (~ref).any()
+    assert np.array_equal(ok, ref)

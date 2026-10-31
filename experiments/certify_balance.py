@@ -237,11 +237,12 @@ def cmd_sanity(a):
     X = sample_ellipsoid(st, rho, a.n, rng)
     t0 = time.time()
     if a.name == "lqr":
-        from pendulum.classic import ClassicController, rollout_controller
-        ctrl = ClassicController.load(ROOT / "results/classic/controller.npz")
-        ctrl.u_nom = ctrl.u_nom[:0]                 # balance controller only
+        from pendulum.certify.model import simulate_lqr_batch
+        cd = controller("lqr")
         task = replace(DEFAULT_TASK, duration=a.seconds, swing_up_time=0.0)
-        stats = rollout_controller(ctrl, X, TARGET_PHYSICS, task)
+        okb = simulate_lqr_batch(cd.K, X, task.max_steps, cd, task.upright_tol)
+        stats = np.zeros((len(X), 9)); stats[:, S_STEPS] = np.where(okb, task.max_steps, 0)
+        stats[:, S_REASON] = np.where(okb, 0, 2)
     else:
         pol = policy_for(a.name)
         task = replace(DEFAULT_TASK, duration=a.seconds, swing_up_time=0.0,

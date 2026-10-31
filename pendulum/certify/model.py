@@ -291,3 +291,41 @@ def phi_gamma(dt: float):
     (dt, dt) so callers can multiply it out with interval rounding."""
     Phi = np.eye(6); Phi[0, 3] = Phi[1, 4] = Phi[2, 5] = dt
     return Phi
+
+
+# ----------------------------------------------------------------------------- batch simulation (LQR)
+
+def simulate_lqr_batch(K, X, steps, cd: ControllerData, tol: float):
+    """Episode check for the saturated balance LQR (classic controller after its swing-up, with the
+    wrapped state error): returns a bool per start, True if every step is upright and on the track.
+    Uses rollout.physics_step; same semantics as classic.rollout_controller with swing-up time 0."""
+    return _sim_lqr(np.asarray(K, dtype=np.float64), np.ascontiguousarray(X, dtype=np.float64),
+                    int(steps), cd.g, cd.dt, cd.fmax, cd.lx, tol)
+
+
+def _make_sim_lqr():
+    import math
+    import numba as nb
+
+    @nb.njit(cache=True, parallel=True)
+    def sim(K, X, steps, g, dt, fmax, lx, tol):
+        n = X.shape[0]
+        ok = np.ones(n, dtype=np.bool_)
+        for i in nb.prange(n):
+            s = X[i].copy()
+            for k in range(steps):
+                e1 = ((s[1] - math.pi) + math.pi) % (2 * math.pi) - math.pi
+                e2 = (s[2] + math.pi) % (2 * math.pi) - math.pi
+                u = -(K[0] * s[0] + K[1] * e1 + K[2] * e2 + K[3] * s[3] + K[4] * s[4] + K[5] * s[5])
+                a = min(1.0, max(-1.0, u / fmax))
+                physics_step(s, a * fmax, g, 0.0, dt)
+                w1 = ((s[1] - math.pi) + math.pi) % (2 * math.pi) - math.pi
+                w2 = (s[2] + math.pi) % (2 * math.pi) - math.pi
+                if not (abs(w1) < tol and abs(w2) < tol) or abs(s[0]) > lx or not math.isfinite(s[0]):
+                    ok[i] = False
+                    break
+        return ok
+    return sim
+
+
+_sim_lqr = _make_sim_lqr()

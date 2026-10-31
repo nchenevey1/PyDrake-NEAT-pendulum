@@ -36,13 +36,8 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     outputs:
-      name: ${{ steps.p.outputs.name }}
-      rho0: ${{ steps.p.outputs.rho0 }}
       shards: ${{ steps.p.outputs.shards }}
-      matrix: ${{ steps.p.outputs.matrix }}
-      sanity_n: ${{ steps.p.outputs.sanity_n }}
-      grid: ${{ steps.p.outputs.grid }}
-      minw: ${{ steps.p.outputs.minw }}
+      names: ${{ steps.p.outputs.names }}
     steps:
       - uses: actions/checkout@v4
       - id: p
@@ -55,25 +50,32 @@ jobs:
           IN_SHARDS: ${{ inputs.shards }}
           IN_SANITY: ${{ inputs.sanity_n }}
         run: |
+          # job.json: one job {"name", "rho0", "shards", "grid", "minw", "sanity_n", "smoke"} or
+          # {"jobs": [job, ...]}; rho0 "" = the setup's sampled upper bound.
           import json, os
           e = os.environ
           if e["EVENT"] == "workflow_dispatch":
-              job = {"name": e["IN_NAME"], "rho0": e["IN_RHO0"], "shards": int(e["IN_SHARDS"]),
-                     "sanity_n": int(e["IN_SANITY"]), "grid": 4}
+              jobs = [{"name": e["IN_NAME"], "rho0": e["IN_RHO0"], "shards": int(e["IN_SHARDS"]),
+                       "sanity_n": int(e["IN_SANITY"])}]
           else:
-              job = json.load(open("results/certify/job.json"))
-              if e["REF"].startswith("cert-smoke") or job.get("smoke"):
-                  job = {"name": job.get("name", "mlp45"), "rho0": 0.05, "shards": 2,
-                         "sanity_n": 10000, "grid": 2}
-          if job.get("rho0") in ("", None):
-              job["rho0"] = json.load(open(f"results/certify/{job['name']}/setup.json"))["rho_sampled_upper"]
-          n = int(job["shards"])
+              d = json.load(open("results/certify/job.json"))
+              jobs = d["jobs"] if "jobs" in d else [d]
+              if e["REF"].startswith("cert-smoke") or d.get("smoke"):
+                  jobs = [{"name": "mlp45", "rho0": 0.05, "shards": 2, "sanity_n": 10000, "grid": 2}]
+          shards, names = [], []
+          for j in jobs:
+              rho0 = j.get("rho0")
+              if rho0 in ("", None):
+                  rho0 = json.load(open(f"results/certify/{j['name']}/setup.json"))["rho_sampled_upper"]
+              n = int(j.get("shards", 10))
+              for i in range(n):
+                  shards.append({"name": j["name"], "shard": i, "n": n, "rho0": rho0,
+                                 "grid": j.get("grid", 4), "minw": j.get("minw", 0.01)})
+              names.append({"name": j["name"], "sanity_n": j.get("sanity_n", 1000000)})
           with open(e["GITHUB_OUTPUT"], "a") as f:
-              f.write(f"name={job['name']}\nrho0={job['rho0']}\nshards={n}\n")
-              f.write(f"sanity_n={job.get('sanity_n', 1000000)}\ngrid={job.get('grid', 4)}\n")
-              f.write(f"minw={job.get('minw', 0.001)}\n")
-              f.write("matrix=" + json.dumps(list(range(n))) + "\n")
-          print(job)
+              f.write("shards=" + json.dumps(shards) + "\n")
+              f.write("names=" + json.dumps(names) + "\n")
+          print(json.dumps(jobs, indent=1))
 
   shard:
     needs: plan
@@ -83,7 +85,7 @@ jobs:
       max-parallel: 5
       fail-fast: false
       matrix:
-        shard: ${{ fromJSON(needs.plan.outputs.matrix) }}
+        include: ${{ fromJSON(needs.plan.outputs.shards) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -93,21 +95,24 @@ jobs:
       - name: branch and bound
         run: |
           nproc
-          python experiments/certify_balance.py run ${{ needs.plan.outputs.name }} \
-            --rho0 ${{ needs.plan.outputs.rho0 }} --grid ${{ needs.plan.outputs.grid }} \
-            --minw ${{ needs.plan.outputs.minw }} \
-            --shard ${{ matrix.shard }} ${{ needs.plan.outputs.shards }} \
-            --out out/shard_${{ matrix.shard }}.json
+          python experiments/certify_balance.py run ${{ matrix.name }} \
+            --rho0 ${{ matrix.rho0 }} --grid ${{ matrix.grid }} --minw ${{ matrix.minw }} \
+            --shard ${{ matrix.shard }} ${{ matrix.n }} --out out/shard_${{ matrix.shard }}.json
           cat out/shard_${{ matrix.shard }}.json
       - uses: actions/upload-artifact@v4
         with:
-          name: cert-${{ needs.plan.outputs.name }}-shard-${{ matrix.shard }}
+          name: cert-${{ matrix.name }}-shard-${{ matrix.shard }}
           path: out/
 
   combine:
     needs: [plan, shard]
+    if: always() && needs.plan.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.names) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -116,23 +121,23 @@ jobs:
       - run: pip install numpy numba scipy pyyaml
       - uses: actions/download-artifact@v4
         with:
-          pattern: cert-${{ needs.plan.outputs.name }}-shard-*
+          pattern: cert-${{ matrix.name }}-shard-*
           merge-multiple: true
           path: shards/
       - name: combine
         run: |
           for f in shards/*.json; do echo "== $f"; cat $f; done
-          python experiments/certify_balance.py combine ${{ needs.plan.outputs.name }} shards/*.json
+          python experiments/certify_balance.py combine ${{ matrix.name }} shards/*.json
       - name: sanity (simulate samples of the certified set for 60 s)
         run: |
-          python experiments/certify_balance.py sanity ${{ needs.plan.outputs.name }} \
-            --n ${{ needs.plan.outputs.sanity_n }} --seconds 60 --out results/certify/${{ needs.plan.outputs.name }}/sanity.json
-          cat results/certify/${{ needs.plan.outputs.name }}/sanity.json
+          python experiments/certify_balance.py sanity ${{ matrix.name }} \
+            --n ${{ matrix.sanity_n }} --seconds 60 --out results/certify/${{ matrix.name }}/sanity.json
+          cat results/certify/${{ matrix.name }}/sanity.json
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cert-${{ needs.plan.outputs.name }}-result
+          name: cert-${{ matrix.name }}-result
           path: |
-            results/certify/${{ needs.plan.outputs.name }}/certificate.json
-            results/certify/${{ needs.plan.outputs.name }}/sanity.json
+            results/certify/${{ matrix.name }}/certificate.json
+            results/certify/${{ matrix.name }}/sanity.json
             shards/
