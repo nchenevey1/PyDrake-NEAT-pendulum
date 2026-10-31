@@ -34,6 +34,7 @@ pruning). The open problem is finding it *reliably*. Why earlier runs failed and
 | [docs/TASK_AND_EVALUATION.md](docs/TASK_AND_EVALUATION.md) | task constants, sparse score, evaluation protocol, classic reference |
 | [docs/IMPLEMENTATION_NOTES.md](docs/IMPLEMENTATION_NOTES.md) | code layout, methods, tests, bugs fixed |
 | [results/experiments/README.md](results/experiments/README.md) | diagnostic experiments and their results |
+| [results/diffsim/README.md](results/diffsim/README.md) | differentiable simulation: JAX port, gradient-vs-chaos diagnostics, literature (in progress) |
 | [configs/README.md](configs/README.md) | experiment configurations |
 
 ## Quick start
