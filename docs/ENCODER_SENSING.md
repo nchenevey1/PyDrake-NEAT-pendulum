@@ -178,13 +178,11 @@ What the map says:
    (differences track optimiser noise).
 7. **Bigger networks often scored 0 %** (mlp:8, rnn:8, 89–137 params): with pop 32 and 600
    generations CMA-ES did not converge. This is a budget artefact, not a capacity limit.
-8. **int8 is free for the small networks** (within a few % of float in most passing cells),
-   so the bit cost is params × 8: the smallest robust encoder controller is
-   hist3 mlp:2 = 29 × 8 = 232 bits (+ 6 × 14-bit history words), against 3,139 × 32 bits for
-   the classic controller with an observer.
+8. **int8 is nearly free for balance** (within a few % of float in most passing cells). For
+   the full swing-up it is not: see stage 2, where int8 success varies from 0 % to 100 %
+   between seeds of the same cell.
 
-## Stage 2
-## Stage 2
+## Stage 2 (launch)
 
 Launched: Actions run **41161570797** (commit `bf1f45c`, launch label `enc-main-1`), 14 cells × 3
 seeds, up to 4B env steps each, early stop at 99 % validation. Cells (chosen from the stage-1 map):
@@ -194,7 +192,111 @@ seeds, up to 4B env steps each, early stop at 99 % validation. Cells (chosen fro
 | no delay | full mlp:4 (bound) · fd 4096 mlp:2 · fd 4096 mlp:4 · fd 1024 mlp:4 · hist3 1024 mlp:2 · hist3 1024 mlp:4 · hist4 256 mlp:2 · fd 256 rnn:4 · pos 1024 rnn:4 |
 | delay + 8-bit | full mlp:4 · fd 4096 mlp:4 · hist3 4096 mlp:4 · hist3 1024 mlp:2 · pos 1024 rnn:2 |
 
-Results: not in yet. Runs, launch labels and commits:
-[`results/encoder/README.md`](../results/encoder/README.md). Each job prints its reports
-(without weights) to the job log as `ENC>` lines; `python experiments/encoder_compact.py --parse
-<log>` turns a saved log back into JSON lines if the artifacts cannot be downloaded.
+All 14 cells × 3 seeds finished (42 runs, every job green). The reports were transcribed from
+the job logs into `results/encoder/actions/stage2_41161570797.jsonl`; the artifacts (with
+weights) could not be downloaded from the cloud container. Tables:
+[`summary.md`](../results/encoder/summary.md); figures:
+[`fig_success_vs_bits_stage2.png`](../results/encoder/fig_success_vs_bits_stage2.png),
+[`fig_success_vs_bits_stage2_real.png`](../results/encoder/fig_success_vs_bits_stage2_real.png).
+
+## Stage 2 results (swing-up + balance, the real task)
+
+Solved = ≥ 90 % on the 256 test starts at 20 s. Test success per seed; 60 s, int8 and Drake
+for the solved seeds.
+
+| Cell | Params (memory) | Seeds solved | Test 20 s per seed (%) | 60 s | int8 per seed (%) | Drake | Where unsolved seeds stalled |
+|---|---|---|---|---|---|---|---|
+| **No delay** | | | | | | | |
+| full state, mlp:4 (bound) | 45 (0) | 2/3 | 100 · 1.2 · 98.4 | = 20 s | 91 · 2 · 2 | 16/16 | 0.25 s |
+| fd 4096, mlp:2 | 23 (3) | 0/3 | 4.7 · 0 · 0 | | | | 0.45–0.55 s |
+| fd 4096, mlp:4 | 45 (3) | 2/3 | 71.9 · 98.8 · 98.8 | = 20 s | 62 · 0 · 0 | 16/16 | – |
+| fd 1024, mlp:4 | 45 (3) | 0/3 | 0 · 0 · 0 | | | | **1.1–1.2 s** |
+| **hist3 1024, mlp:2** | **29 (6)** | **2/3** | 97.3 · 96.5 · 0 | = 20 s | 81 · 84 · 0 | 16/16 | 0.55 s |
+| hist3 1024, mlp:4 | 57 (6) | 2/3 | 0 · 98.4 · 98.0 | 98.4 / 94.5 | 0 · 0 · 95 | 16/16 | 0.5 s |
+| hist4 256, mlp:2 | 35 (9) | 0/3 | 0 · 0 · 0 | | | | 0.55, **1.0, 1.05 s** |
+| fd 256, rnn:4 | 61 (7) | 0/3 | 0 · 0 · 0 | | | | **1.0–1.35 s** |
+| positions only 1024, rnn:4 | 49 (4) | 0/3 | 0 · 0 · 0 | | | | **1.3–1.4 s** |
+| **One-step delay + 8-bit force** | | | | | | | |
+| full state, mlp:4 | 45 (0) | **3/3** | 99.2 · 100 · 100 | = 20 s | 0 · 0 · 91 | 16/16 | – |
+| **fd 4096, mlp:4** | 45 (3) | 2/3 | 90.2 · **100** · 0 | = 20 s | 0 · **100** · 0 | 16/16 | 1.05 s |
+| **hist3 4096, mlp:4** | 57 (6) | 2/3 | **100** · 0 · 98.4 | = 20 s | **99** · 0 · 0 | 16/16 | 0.55 s |
+| hist3 1024, mlp:2 | 29 (6) | 0/3 | 0 · 0.4 · 0.8 | | | | 0.55 s |
+| positions only 1024, rnn:2 | 21 (2) | 0/3 | 0 · 0 · 0 | | | | **1.45–1.55 s** |
+
+Drake column: 16-start replay in Drake of every solved seed (one solved seed, fd 4096
+no-delay seed 0 at 72 %, gave 12/16); the Python reference and the numba kernel agreed in all
+but one start. A local rerun of hist3 1024 mlp:2 seed 1 did not reproduce the Actions result
+(0.4 %, stalled at 0.5 s): runs are not bit-identical across machines (floating point plus chaos),
+so each seed is a sample, and the 2/3 rates have wide uncertainty (with the rerun: 2/4).
+
+### Answers
+
+**Does a position-only controller swing up?** Yes. Five position-only cells solved in 2 of 3
+seeds, the same rate as the full-state bound without delay (2/3). With realistic actuation
+(encoders 4096 CPR, one-step delay, 8-bit force) a 45-param MLP reached 100 % test, 100 % at
+60 s, **100 % after int8 weight quantization**, and 16/16 in Drake; a 57-param 3-frame history
+MLP did the same (100 %, int8 99 %) after only 0.84B steps, the fastest solve in the study.
+
+**How many parameters and bits?**
+
+| Setting | Smallest solved | Bits (int8 weights + encoders) |
+|---|---|---|
+| No delay | **29 params**: 3-frame history, mlp:2, at **1024 CPR** (int8 81–84 %) | 29 × 8 = 232 weight bits; 10-bit pole encoders; 6 stored history words |
+| Delay + 8-bit force | 45 params: fd, mlp:4, at 4096 CPR (int8 100 % in 1 seed) | 45 × 8 = 360 weight bits; 12-bit pole encoders; 3 history words |
+| Classic reference | trajopt + TVLQR + model-based α-β observer, from 1024 CPR | 3,139 × 32 ≈ 100,000 bits |
+
+Caveat: no full-state mlp:2 was trained in stage 2, so "29 < 45" does not show that encoders
+let the network shrink. It shows that a 29-param network with a fixed 3-frame encoding solves
+the task at 10-bit resolution, where a 45-param network with plain differencing does not.
+
+**Which way of getting velocity works best per parameter?** At 1024 CPR, a short position
+history beats every alternative: 4 of 6 seeds solved (mlp:2 and mlp:4) against 0/3 for the
+one-step differencer with a larger network (45 params) and 0/3 for an RNN on positions (49).
+At 4096 the plain differencer works with mlp:4 (2/3) but not with mlp:2 (0/3), while the
+history network solves with mlp:2 at 4× coarser resolution. RNNs on raw positions never got
+past 1.3 s. Per parameter: **history (fixed differencing of 3 frames) > one-step differencing
+> learned recurrence.** Under delay, history and differencing tie at 4096 (2/3 each); the
+29-param history network did not solve at 1024 with delay (0/3; all three stalled at 0.55 s, the
+same stall as the full-state runs, so this may be optimisation rather than sensing).
+
+**Where it fails.** Two distinct stall points:
+
+1. **0.45–0.60 s into the reference** (the force reversal, −81 N → +61 N): the stall DIAGNOSIS
+   found for the full-state network. Unsolved seeds of every cell that does work stall here. It
+   is a curriculum/optimisation bottleneck, not a sensing one.
+2. **1.0–1.55 s**, reached by every seed of the cells that fail for sensing reasons (fd at 1024,
+   anything at 256, positions-only RNNs). `experiments/encoder_window.py` localises it: giving
+   the solved full-state policy 1024-CPR differenced velocities only during 0.75–1.25 s costs
+   16 % of starts (84 % success), and at 256 CPR 92–100 % (0–8 %). During the pumping phase
+   (0–0.5 s) the same substitution costs ≤ 2 % even at 256. So the pre-registered prediction (that
+   coarse encoders fail in the 1-bit pumping phase) was **wrong**: the sensitive phase is the fast
+   middle of the swing (pole speed ~9 rad/s, acceleration ~100 rad/s²), just before the
+   1.0–2.0 s phase in which DIAGNOSIS measured ~50× error growth. Probable mechanism (not yet
+   tested in isolation): quantization errors injected there have the most time to be amplified
+   by the chaotic dynamics before the catch. Averaging two differences makes it worse (72–81 %
+   instead of 84–95 % in that window): the extra half-step of lag costs more than the noise it
+   removes, so the history network's advantage is not simple averaging.
+
+**Other observations.**
+
+* **Delay helps learning.** Full state with delay + 8-bit force solved 3/3 seeds (≤ 3.7B steps)
+  against 2/3 without delay. Trained policies are delay-specific: switching the delay setting
+  drops them to 0–28 %.
+* **int8 is a lottery per seed.** Within one cell, int8 success ranges from 0 % to 100 %
+  (`GraphPolicy.quantized`: one symmetric scale per tensor). The bit count is only realised if
+  quantization is part of training or fine-tuning.
+* **Cross-resolution transfer is asymmetric.** Policies trained at 4096 keep their success at
+  16384 but drop at 1024 (0–88 %; the history policies trained with delay keep 85–88 %) and fail at 256; one 1024-trained history policy failed
+  completely at 4096 and 16384 (it learned the 1024 quantization pattern).
+* The cart encoder resolution was not varied in stage 2 (0.1 mm); stage 1 showed no effect.
+
+### Stop condition and the proposed change
+
+Position-only controllers do swing up, so the "no controller swings up" stop does not apply.
+Below 1024 CPR nothing swung up, and the failure is located (0.75–1.25 s). **Proposed change**,
+one: **train with quantization and delay, and select by int8 success**, i.e. evaluate every
+candidate through `GraphPolicy.quantized(8)` during the final curriculum levels (quantization-aware
+evolution). It is the cheapest change with the largest effect on the deployable bit count:
+half of the solved seeds lose everything at int8 today. Second priority, for the CPR floor: a
+3-frame history at 256 CPR with the curriculum's start-time step halved around 0.75–1.25 s.
+

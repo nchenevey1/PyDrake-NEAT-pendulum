@@ -141,8 +141,8 @@ def stage2_cells(rows):
     for r in rows:
         by[r["tag"].rsplit("_s", 1)[0]].append(r)
     out = ["\n**Stage 2 per cell** (3 seeds; solved = ≥ 90 % test at 20 s)\n",
-           "| Cell | Params | Memory | Seeds solved | Test 20 s per seed | Best: 60 s / int8 / Drake | Closest start per seed (s) |",
-           "|---|---|---|---|---|---|---|"]
+           "| Cell | Params | Memory | Seeds solved | Test 20 s per seed | Best seed: 60 s / Drake | int8 per seed | Closest start per seed (s) |",
+           "|---|---|---|---|---|---|---|---|"]
     for cell, rr in sorted(by.items()):
         rr.sort(key=lambda r: r["seed"])
         b = max(rr, key=lambda r: r["test_20s"])
@@ -150,7 +150,8 @@ def stage2_cells(rows):
         dr = f"{d['drake']}/{d['n']}" if isinstance(d, dict) else "–"
         out.append(f"| {cell} | {b['params']} | {b['memory_words']} | {sum(r['test_20s'] >= 0.9 for r in rr)}/{len(rr)} | "
                    + " · ".join(f"{r['test_20s'] * 100:.1f}" for r in rr)
-                   + f" | {b['test_60s'] * 100:.1f} / {b['int8_20s'] * 100:.1f} / {dr} | "
+                   + f" | {b['test_60s'] * 100:.1f} / {dr} | "
+                   + " · ".join(f"{r['int8_20s'] * 100:.0f}" for r in rr) + " | "
                    + " · ".join(str(r["closest_start_s"]) for r in rr) + " |")
     return "\n".join(out)
 
@@ -170,17 +171,17 @@ def stage2_table(rows):
     return "\n".join(out)
 
 
-def figure(points, path, title):
+def figure(points, path, title, setting="ideal", note=None):
     """points: dicts with family, arch, cpr (0 = full), params, s32, s8, setting."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import matplotlib.ticker
     from matplotlib.lines import Line2D
-    pts = [p for p in points if p["setting"] == "ideal"]
+    pts = [p for p in points if p["setting"] == setting]
     if not pts:
         return
-    fig, axes = plt.subplots(1, 4, figsize=(15, 4.0), sharey=True)
+    fig, axes = plt.subplots(1, 4, figsize=(15, 4.0), sharey=True, sharex=True)
     for ax, c in zip(axes, CPRS):
         for p in pts:
             if p["cpr"] not in (0, c):
@@ -208,7 +209,7 @@ def figure(points, path, title):
     h += [Line2D([], [], marker="o", ls="", color="#52514e", mfc="none", label="float32 (hollow)"),
           Line2D([], [], marker="o", ls="", color="#52514e", label="int8 (filled)")]
     fig.legend(handles=h, loc="lower center", ncol=8, frameon=False, fontsize=8.5)
-    fig.suptitle(title + "\n(points at 0 % are optimiser failures within the fixed budget, not capacity limits)", fontsize=10.5)
+    fig.suptitle(title + ("\n" + note if note else ""), fontsize=10.5)
     fig.tight_layout(rect=(0, 0.1, 1, 0.95))
     fig.savefig(path, dpi=130)
     plt.close(fig)
@@ -227,7 +228,8 @@ def main():
             "s32": r["test_20s"], "s8": r["int8_20s"], "setting": r["setting"]}
            for r in s1 if r["mode"] in ("full", "fd", "hist3", "hist4", "pos") and not (r["mode"] == "pos" and r["arch"].startswith("mlp"))]
     figure(pts, R / "fig_success_vs_bits_stage1.png",
-           "Stage 1 (balance only, no delay): test success vs controller size in bits, per encoder resolution")
+           "Stage 1 (balance only, no delay): test success vs controller size in bits, per encoder resolution",
+           note="(points at 0 % are optimiser failures within the fixed budget, not capacity limits)")
     if s2:
         by = defaultdict(list)
         for r in s2:
@@ -237,9 +239,14 @@ def main():
         for (mode, arch, cpr, delay), rr in by.items():
             b = max(rr, key=lambda r: r["test_20s"])
             pts2.append({"family": family(mode), "arch": arch, "cpr": cpr, "params": b["params"],
-                         "s32": b["test_20s"], "s8": b["int8_20s"], "setting": "real" if delay else "ideal"})
+                         "s32": b["test_20s"], "s8": max(r["int8_20s"] for r in rr),
+                         "setting": "real" if delay else "ideal"})
         figure(pts2, R / "fig_success_vs_bits_stage2.png",
-               "Stage 2 (swing-up + balance, no delay): best-of-3-seeds test success vs size in bits")
+               "Stage 2 (swing-up + balance, no delay): best of 3 seeds, test success vs size in bits",
+               note="hollow = best float seed, filled = best int8 seed; no stage-2 cell was trained at 16384 (full-state reference only)")
+        figure(pts2, R / "fig_success_vs_bits_stage2_real.png",
+               "Stage 2 (swing-up + balance, one-step delay + 8-bit force): best of 3 seeds, test success vs size in bits",
+               setting="real", note="hollow = best float seed, filled = best int8 seed")
     print((R / "summary.md").read_text())
 
 

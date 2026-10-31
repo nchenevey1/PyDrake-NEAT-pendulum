@@ -30,7 +30,7 @@ gh run download <run id> -R nchenevey1/PyDrake-NEAT-pendulum -D results/encoder/
 | enc-s1-1 | s1 | 0228732 | 41158684527 | stage 1, realistic seed 0 + ideal seed 1 | success; results only in artifacts (logs did not print them) |
 | enc-s1b-1 | s1b | 7e4029c | 41158747547 | stage 1, ideal seed 0 | success; results only in artifacts |
 | enc-s1v2-1 | s1v2 | a37d422 | 41159760695 | stage 1 again, results printed to logs: realistic seed 0, ideal seeds 0 and 1 | success; seed-0 cells transcribed to `actions/stage1_41159760695.csv` (9 realistic cells cut off by the log tail were rerun locally); seed-1 cells are in the logs/artifacts, not transcribed |
-| enc-main-1 | main | bf1f45c | **41161570797** | **stage 2**: 14 cells × 3 seeds, ≤ 4B steps | launched |
+| enc-main-1 | main | bf1f45c | **41161570797** | **stage 2**: 14 cells × 3 seeds, ≤ 4B steps | success (14/14 jobs, 02:47–04:47 UTC); all 42 reports transcribed from the job logs to `actions/stage2_41161570797.jsonl`; weights only in artifacts `enc-<cell>` |
 
 ## Local runs (this container, 2 cores)
 
@@ -41,3 +41,5 @@ gh run download <run id> -R nchenevey1/PyDrake-NEAT-pendulum -D results/encoder/
 | Stage 1, 9 realistic cells missing from the transcribed logs | see `local/stage1_real_missing_*.jsonl` | |
 | Classic + fd / + model-based α-β observer | `python experiments/encoder_classic.py` | `classic.json`, `local/classic.log` |
 | Zero-shot: the 45-param full-state policy through the encoders | inline, see docs | docs/ENCODER_SENSING.md |
+| Failure window: full-state policy given encoder velocities in one 0.25 s window | `python experiments/encoder_window.py results/experiments/revcurr_mlp4_s0_v12.json 1024 256` | docs (stage 2) |
+| Rerun of hist3 1024 mlp:2 seed 1 (did not reproduce the Actions solve: 0.4 %) | `python experiments/encoder_curriculum.py --mode hist --k 3 --cpr 1024 --arch mlp:2 --seed 1 --budget 4` | `local/repro_hist3_c1024_mlp2_s1.log` |

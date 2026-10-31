@@ -28,7 +28,7 @@ pruning). The open problem is finding it *reliably*. Why earlier runs failed and
 
 | Document | Contents |
 |---|---|
-| [docs/ENCODER_SENSING.md](docs/ENCODER_SENSING.md) | encoder-only sensing study (quantized positions, delay); branch `claude/quantized-encoder-swing-up-r876l1` (session-assigned in place of `research/encoder-sensing`) |
+| [docs/ENCODER_SENSING.md](docs/ENCODER_SENSING.md) | encoder-only sensing study: a 29-param controller swings up from 1024-CPR encoder positions; with delay + 8-bit force, 45 params at 4096 CPR (100 %, int8 100 %); branch `claude/quantized-encoder-swing-up-r876l1` (session-assigned in place of `research/encoder-sensing`) |
 | [docs/DIAGNOSIS.md](docs/DIAGNOSIS.md) | goal and research relevance, why learning failed (measured), what to change |
 | [docs/RESEARCH_PLAN.md](docs/RESEARCH_PLAN.md) | question, findings so far, experiment matrix, success criteria, next steps |
 | [docs/CURRICULUM.md](docs/CURRICULUM.md) | curriculum and advancement design, swing-up deadline decisions |
