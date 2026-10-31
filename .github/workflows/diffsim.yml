@@ -1,0 +1,134 @@
+# Differentiable-simulation study (results/diffsim/README.md): tune -> select -> main -> report.
+# Tags diff-smoke-* run a tiny smoke version; any other diff-* tag runs the full campaign.
+name: diffsim
+
+on:
+  push:
+    tags: ["diff-*"]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "smoke or full"
+        type: choice
+        options: [smoke, full]
+        default: smoke
+
+env:
+  PIP_PKGS: "numpy numba cma pyyaml matplotlib jax[cpu] optax"
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.cfg.outputs.mode }}
+      tune_budget: ${{ steps.cfg.outputs.tune_budget }}
+      main_budget: ${{ steps.cfg.outputs.main_budget }}
+      archs: ${{ steps.cfg.outputs.archs }}
+      seeds: ${{ steps.cfg.outputs.seeds }}
+    steps:
+      - id: cfg
+        run: |
+          MODE="${{ github.event.inputs.mode }}"
+          if [ -z "$MODE" ]; then
+            case "${GITHUB_REF_NAME}" in diff-smoke*) MODE=smoke ;; *) MODE=full ;; esac
+          fi
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          if [ "$MODE" = smoke ]; then
+            echo 'tune_budget=0.003' >> "$GITHUB_OUTPUT"
+            echo 'main_budget=0.005' >> "$GITHUB_OUTPUT"
+            echo 'archs=["mlp2"]' >> "$GITHUB_OUTPUT"
+            echo 'seeds=0 1' >> "$GITHUB_OUTPUT"
+          else
+            echo 'tune_budget=0.4' >> "$GITHUB_OUTPUT"
+            echo 'main_budget=2.0' >> "$GITHUB_OUTPUT"
+            echo 'archs=["mlp2","mlp4","mlp8"]' >> "$GITHUB_OUTPUT"
+            echo 'seeds=0 1 2' >> "$GITHUB_OUTPUT"
+          fi
+          echo "commit ${GITHUB_SHA} mode $MODE"
+
+  tune:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      max-parallel: 5
+      fail-fast: false
+      matrix:
+        method: [cmaes, bptt_curr, zo_curr, bptt_full, bptt_trunc, bptt_dense, hybrid]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install $PIP_PKGS
+      - run: nproc && python diffsim/campaign.py tune ${{ matrix.method }} ${{ needs.setup.outputs.tune_budget }} out/tune
+      - if: always()
+        run: tail -n 3 out/tune/*.stdout || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tune-${{ matrix.method }}
+          path: out/tune
+
+  select:
+    needs: [setup, tune]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/download-artifact@v4
+        with: { pattern: "tune-*", path: out/tune }
+      - run: python diffsim/campaign.py select out/tune out/chosen.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chosen
+          path: out/chosen.json
+
+  main:
+    needs: [setup, select]
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      max-parallel: 5
+      fail-fast: false
+      matrix:
+        method: [cmaes, bptt_curr, zo_curr, bptt_full, bptt_trunc, bptt_dense, hybrid]
+        arch: ${{ fromJSON(needs.setup.outputs.archs) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install $PIP_PKGS
+      - uses: actions/download-artifact@v4
+        with: { name: chosen, path: out }
+      - run: |
+          A="${{ matrix.arch }}"
+          nproc && python diffsim/campaign.py main ${{ matrix.method }} "mlp:${A#mlp}" ${{ needs.setup.outputs.main_budget }} "${{ needs.setup.outputs.seeds }}" out/chosen.json out/main
+      - if: always()
+        run: tail -n 2 out/main/*.stdout || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-${{ matrix.method }}-${{ matrix.arch }}
+          path: out/main
+
+  report:
+    needs: [setup, main]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install $PIP_PKGS drake
+      - uses: actions/download-artifact@v4
+        with: { pattern: "main-*", path: out/main }
+      - uses: actions/download-artifact@v4
+        with: { name: chosen, path: out }
+      - run: python diffsim/campaign.py report out/main out/report --drake && cp out/chosen.json out/report/
+      - run: cat out/report/report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: report
+          path: out/report
