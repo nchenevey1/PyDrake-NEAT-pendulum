@@ -1,0 +1,13 @@
+{
+ "name": "mlp45_int8",
+ "rho": 1.5823985865542824,
+ "n": 256,
+ "simulated_success": 0.9140625,
+ "certified_success": 0.9140625,
+ "catch_time_median_s": 13.41,
+ "catch_time_p10_p90_s": [
+  10.102,
+  16.541
+ ],
+ "catch_time_max_s": 17.17
+}

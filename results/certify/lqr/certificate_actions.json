@@ -1,0 +1,21 @@
+{
+ "name": "lqr",
+ "source": "GitHub Actions run 41167660323 (commit dcbe9e5), transcribed from the combine job log; artifact cert-lqr-result",
+ "rho": 5.8322945149940795,
+ "rho0": 6.340725159401604,
+ "eps": 0.01548400200285316,
+ "complete": true,
+ "shards": 10,
+ "grid": 4,
+ "minw": 0.01,
+ "setup_hash": "ddc45fda6f2acaef",
+ "stats": {
+  "evaluated": 130333361,
+  "verified": 59388200,
+  "failed_small": 688,
+  "counterexample": 4272
+ },
+ "cpu_seconds": 5308.9,
+ "volume": 0.00014377356503953944,
+ "fraction_of_sampled_bound": 0.9198150634784008
+}

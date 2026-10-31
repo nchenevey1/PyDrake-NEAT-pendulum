@@ -1,0 +1,10 @@
+{
+ "name": "mlp45_int8",
+ "rho": 1.5824001689544513,
+ "n": 1000000,
+ "seconds": 60.0,
+ "failures": 0,
+ "wall": 732.8,
+ "seed": 0,
+ "source": "GitHub Actions run 41167660323, combine job log"
+}

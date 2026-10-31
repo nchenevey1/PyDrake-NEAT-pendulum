@@ -27,7 +27,7 @@
   "w1": 7.000700070007e-05,
   "w2": 0.0
  },
- "rho_cert": null,
- "certified_volume": null,
- "certified_over_empirical": null
+ "rho_cert": 1.5824001689544513,
+ "certified_volume": 8.379003081822616e-07,
+ "certified_over_empirical": 5.4291591539304024e-08
 }

@@ -1,0 +1,10 @@
+{
+ "name": "lqr",
+ "rho": 5.8322945149940795,
+ "n": 1000000,
+ "seconds": 60.0,
+ "failures": 0,
+ "wall": 200.0,
+ "seed": 0,
+ "source": "GitHub Actions run 41167660323, combine job log"
+}

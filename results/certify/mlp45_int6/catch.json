@@ -1,0 +1,10 @@
+{
+ "name": "mlp45_int6",
+ "rho": 1.2985833521153174,
+ "n": 256,
+ "simulated_success": 0.546875,
+ "certified_success": 0.0,
+ "catch_time_median_s": null,
+ "catch_time_p10_p90_s": null,
+ "catch_time_max_s": null
+}

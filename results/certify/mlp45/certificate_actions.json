@@ -11,12 +11,66 @@
  "minw": 0.01,
  "setup_hash": "1efa5ff40547d9c2",
  "limiting_shard": 8,
- "limiting_z": [-0.03372571585751852, -0.37617144610309117, -0.33725715857518523, -0.6900800321615328, -0.3476343019159601, -0.8872457556362565],
- "shard_rho": {"4": 1.617241811871289, "8": 1.6151688736209255,
-               "1": "rho0", "3": "rho0", "5": "rho0", "6": "rho0", "9": "rho0",
-               "0": "> 1.62 (limiting |c|^2 = 1.778)", "2": "> 1.62 (limiting |c|^2 = 1.742)", "7": "> 1.62 (limiting |c|^2 = 1.738)"},
- "stats": {"evaluated": 78196865, "verified": 35199725, "failed_small": 220, "counterexample": 2154},
- "cpu_seconds_wall_per_shard": [399, 359, 304, 116, 1251, 145, 116, 736, 1285, 437],
+ "limiting_z": [
+  -0.03372571585751852,
+  -0.37617144610309117,
+  -0.33725715857518523,
+  -0.6900800321615328,
+  -0.3476343019159601,
+  -0.8872457556362565
+ ],
+ "shard_rho": {
+  "4": 1.617241811871289,
+  "8": 1.6151688736209255,
+  "1": "rho0",
+  "3": "rho0",
+  "5": "rho0",
+  "6": "rho0",
+  "9": "rho0",
+  "0": "> 1.62 (limiting |c|^2 = 1.778)",
+  "2": "> 1.62 (limiting |c|^2 = 1.742)",
+  "7": "> 1.62 (limiting |c|^2 = 1.738)"
+ },
+ "stats": {
+  "evaluated": 78196865,
+  "verified": 35199725,
+  "failed_small": 220,
+  "counterexample": 2154
+ },
+ "cpu_seconds_wall_per_shard": [
+  399,
+  359,
+  304,
+  116,
+  1251,
+  145,
+  116,
+  736,
+  1285,
+  437
+ ],
  "volume": 1.083232404908557e-06,
- "local_spot_check": "40 000 samples of V <= rho (half in the outer 1 % shell), 60 s, repository episode kernel: 0 failures"
+ "local_spot_check": "40 000 samples of V <= rho (half in the outer 1 % shell), 60 s, repository episode kernel: 0 failures",
+ "recheck": {
+  "name": "mlp45",
+  "source": "GitHub Actions run 41167660323 (commit dcbe9e5), transcribed from the combine job log; artifact cert-mlp45-result",
+  "rho": 1.61516887362093,
+  "rho0": 1.61516887362093,
+  "eps": 0.0019736333385791485,
+  "complete": true,
+  "shards": 10,
+  "grid": 4,
+  "minw": 0.01,
+  "setup_hash": "1efa5ff40547d9c2",
+  "stats": {
+   "evaluated": 40915536,
+   "verified": 18426908,
+   "failed_small": 0,
+   "counterexample": 1144
+  },
+  "cpu_seconds": 2347.2,
+  "volume": 1.083232404908566e-06,
+  "fraction_of_sampled_bound": 0.915466308595583,
+  "note": "independent recheck at the level of run 41163866994: reproduced exactly (no box lowered the level)"
+ }
 }

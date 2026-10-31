@@ -1,0 +1,21 @@
+{
+ "name": "mlp45_pruned",
+ "source": "GitHub Actions run 41167660323 (commit dcbe9e5), transcribed from the combine job log; artifact cert-mlp45_pruned-result",
+ "rho": 1.626541005361395,
+ "rho0": 1.7770904128959617,
+ "eps": 0.002015085677884273,
+ "complete": true,
+ "shards": 10,
+ "grid": 4,
+ "minw": 0.01,
+ "setup_hash": "a9f2212af50867a5",
+ "stats": {
+  "evaluated": 81766773,
+  "verified": 36975197,
+  "failed_small": 227,
+  "counterexample": 2121
+ },
+ "cpu_seconds": 5023.4,
+ "volume": 1.0665811563246302e-06,
+ "fraction_of_sampled_bound": 0.915283203126829
+}

@@ -1,0 +1,21 @@
+{
+ "name": "mlp45_int6",
+ "source": "GitHub Actions run 41167660323 (commit dcbe9e5), transcribed from the combine job log; artifact cert-mlp45_int6-result",
+ "rho": 1.298584650699968,
+ "rho0": 1.4286632924524978,
+ "eps": 0.0012053757430033568,
+ "complete": true,
+ "shards": 10,
+ "grid": 4,
+ "minw": 0.01,
+ "setup_hash": "4fc9c3b235ea5c6a",
+ "stats": {
+  "evaluated": 66976128,
+  "verified": 30387443,
+  "failed_small": 234,
+  "counterexample": 1809
+ },
+ "cpu_seconds": 3937.4,
+ "volume": 2.3671053180551068e-07,
+ "fraction_of_sampled_bound": 0.908950805665881
+}
