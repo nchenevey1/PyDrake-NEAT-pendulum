@@ -261,7 +261,9 @@ on this branch (first word = `smoke` | `full`).
 
 | Launch | Run ID | Commit | Mode | Status |
 |---|---|---|---|---|
-| `diffsim/LAUNCH` = `smoke diff-smoke-1` | [41161943548](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41161943548) | 5162f96 | smoke | queued at 02:53 UTC |
+| `diffsim/LAUNCH` = `smoke diff-smoke-1` | [41161943548](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41161943548) | 5162f96 | smoke | failed: `zo_curr` batch-size ordering bug (select/main skipped) |
+| `diffsim/LAUNCH` = `smoke diff-smoke-2` | [41162542568](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41162542568) | 395cce1 | smoke | **success**, all jobs, 5 min; all artifacts incl. `report` |
+| `diffsim/LAUNCH` = `full diff-full-1` | (see next commit) | (this commit) | full | launched 2026-10-31 ~03:10 UTC; expected ~4 h |
 
 ## Files
 
