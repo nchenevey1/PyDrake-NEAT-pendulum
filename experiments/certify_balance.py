@@ -259,6 +259,93 @@ def cmd_sanity(a):
         sys.exit(1)
 
 
+def _cert_rho(name):
+    p = OUT / name / "certificate_actions.json"
+    if not p.exists():
+        p = OUT / name / "certificate.json"
+    return json.loads(p.read_text())["rho"]
+
+
+def _survives(name, X, seconds):
+    """Bool per start: upright and on the track at every step for `seconds` (repository kernels)."""
+    from pendulum.policy import pack
+    from pendulum.rollout import rollout, S_STEPS, S_REASON
+    if name == "lqr":
+        from pendulum.certify.model import simulate_lqr_batch
+        cd = controller("lqr")
+        task = replace(DEFAULT_TASK, duration=seconds, swing_up_time=0.0)
+        return simulate_lqr_batch(cd.K, X, task.max_steps, cd, task.upright_tol)
+    pol = policy_for(name)
+    task = replace(DEFAULT_TASK, duration=seconds, swing_up_time=0.0, **pol.meta.get("obs_scale", {}))
+    st, _ = rollout(pack([pol]), X, TARGET_PHYSICS, task)
+    return (st[0, :, S_STEPS] >= task.max_steps) & (st[0, :, S_REASON] == 0)
+
+
+def cmd_empirical(a):
+    """Monte-Carlo volume of the empirical balance region: states in the safe set (upright, on the
+    track) with |velocities| inside a box, from which the closed loop stays safe for `seconds`."""
+    info, st = load_setup(a.name)
+    rng = np.random.default_rng(a.seed)
+    lo = np.array([-2.8, np.pi - 0.2, -0.2, -a.vcart, -a.wpole, -a.wpole])
+    hi = np.array([2.8, np.pi + 0.2, 0.2, a.vcart, a.wpole, a.wpole])
+    X = rng.uniform(lo, hi, size=(a.n, 6))
+    ok = _survives(a.name, X, a.seconds)
+    box = float(np.prod(hi - lo))
+    p = ok.mean()
+    # does the box contain the region? success rate in the outer 10 % of each velocity range
+    edge = {k: float(ok[np.abs(X[:, i]) > 0.9 * hi[i]].mean()) for k, i in (("xd", 3), ("w1", 4), ("w2", 5))}
+    rho = _cert_rho(a.name)
+    vc = VF.ellipsoid_volume(np.array(st.W), rho)
+    out = {"name": a.name, "n": a.n, "seconds": a.seconds, "box_lo": lo.tolist(), "box_hi": hi.tolist(),
+           "box_volume": box, "fraction": float(p), "volume": p * box,
+           "volume_rel_se": float(np.sqrt((1 - p) / max(a.n * p, 1))),
+           "edge_success": edge, "rho_cert": rho, "certified_volume": vc,
+           "certified_over_empirical": vc / (p * box) if p > 0 else None}
+    print(json.dumps(out, indent=1))
+    (OUT / a.name / "empirical.json").write_text(json.dumps(out, indent=1))
+
+
+def cmd_catch(a):
+    """First entry of the 256 test swing-ups into the certified set. An episode is *certified to
+    succeed* if it enters Omega_rho at step k and the simulated prefix (steps <= k) obeys the episode
+    rules (on the track; upright at every step after the swing-up deadline)."""
+    from pendulum.evaluation import test_ics
+    from pendulum.rollout import simulate
+    info, st = load_setup(a.name)
+    rho = _cert_rho(a.name) * (1 - 1e-6)
+    W = np.array(st.W); xs = np.array(st.xs)
+    if a.name == "lqr":
+        raise SystemExit("catch: the LQR has no swing-up of its own (use the classic controller)")
+    pol = policy_for(a.name)
+    task = replace(DEFAULT_TASK, duration=a.seconds, **pol.meta.get("obs_scale", {}))
+    ics = test_ics(256, task)
+    times, cert, succ = [], [], []
+    for ic in ics:
+        stats, traj = simulate(pol, ic, TARGET_PHYSICS, task)
+        S = traj[:, :6]
+        succ.append(len(S) - 1 >= task.max_steps)
+        V = (((S - xs) @ W.T) ** 2).sum(1)
+        inside = np.nonzero(V <= rho)[0]
+        if len(inside) == 0:
+            cert.append(False); continue
+        k = int(inside[0])
+        e1 = (S[1:k + 1, 1] - np.pi + np.pi) % (2 * np.pi) - np.pi
+        e2 = (S[1:k + 1, 2] + np.pi) % (2 * np.pi) - np.pi
+        up = (np.abs(e1) < task.upright_tol) & (np.abs(e2) < task.upright_tol)
+        steps = np.arange(1, k + 1)
+        ok = np.all(np.abs(S[1:k + 1, 0]) <= task.limit_x) and np.all(up | (steps <= task.swing_up_steps))
+        cert.append(bool(ok))
+        if ok:
+            times.append(k * task.dt)
+    out = {"name": a.name, "rho": rho, "n": len(ics), "simulated_success": float(np.mean(succ)),
+           "certified_success": float(np.mean(cert)),
+           "catch_time_median_s": float(np.median(times)) if times else None,
+           "catch_time_p10_p90_s": [float(np.percentile(times, 10)), float(np.percentile(times, 90))] if times else None,
+           "catch_time_max_s": float(np.max(times)) if times else None}
+    print(json.dumps(out, indent=1))
+    (OUT / a.name / "catch.json").write_text(json.dumps(out, indent=1))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -275,6 +362,12 @@ def main():
     p = sub.add_parser("sanity"); p.add_argument("name"); p.add_argument("--n", type=int, default=100000)
     p.add_argument("--seconds", type=float, default=60.0); p.add_argument("--seed", type=int, default=0)
     p.add_argument("--out", default=None); p.set_defaults(f=cmd_sanity)
+    p = sub.add_parser("empirical"); p.add_argument("name"); p.add_argument("--n", type=int, default=1000000)
+    p.add_argument("--seconds", type=float, default=60.0); p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--vcart", type=float, default=7.0); p.add_argument("--wpole", type=float, default=6.0)
+    p.set_defaults(f=cmd_empirical)
+    p = sub.add_parser("catch"); p.add_argument("name"); p.add_argument("--seconds", type=float, default=20.0)
+    p.set_defaults(f=cmd_catch)
     a = ap.parse_args()
     a.f(a)
 

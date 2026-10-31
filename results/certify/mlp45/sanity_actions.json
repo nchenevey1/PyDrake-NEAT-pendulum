@@ -1,0 +1,10 @@
+{
+ "name": "mlp45",
+ "rho": 1.6151688736209255,
+ "n": 1000000,
+ "seconds": 60.0,
+ "failures": 0,
+ "wall": 588.6,
+ "seed": 0,
+ "source": "GitHub Actions run 41163866994, combine job log"
+}

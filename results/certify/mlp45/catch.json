@@ -1,0 +1,13 @@
+{
+ "name": "mlp45",
+ "rho": 1.6151672584520518,
+ "n": 256,
+ "simulated_success": 1.0,
+ "certified_success": 1.0,
+ "catch_time_median_s": 11.7,
+ "catch_time_p10_p90_s": [
+  7.51,
+  13.725000000000001
+ ],
+ "catch_time_max_s": 15.200000000000001
+}
