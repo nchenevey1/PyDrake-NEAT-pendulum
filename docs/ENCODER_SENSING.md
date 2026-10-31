@@ -132,10 +132,69 @@ As predicted from the gains (fd force noise ≈ 50 N RMS at 4096, 12 N at 16384)
 high-gain TVLQR needs 16384 CPR with a plain differencer; a model-based observer (+7 numbers)
 moves the threshold to 1024. Realistic setting (delay + 8-bit): see `results/encoder/summary.md`.
 
-## Stage 1 results
+## Stage 1 results (balance only, map done)
 
-(filled in below by `experiments/encoder_stage1.py`; raw: `results/encoder/stage1.jsonl`)
+Full tables: [`results/encoder/summary.md`](../results/encoder/summary.md); figure:
+[`fig_success_vs_bits_stage1.png`](../results/encoder/fig_success_vs_bits_stage1.png). One seed
+per cell (seed 0; 600 CMA-ES generations), cart encoder 0.1 mm. Where it ran: Actions run
+41159760695 (cells transcribed from the job logs into `results/encoder/actions/`), plus local
+runs (`results/encoder/local/`).
+
+**Coarsest CPR with ≥ 90 % at 20 s** (smallest passing network in brackets; † = held loosely,
+max angle error over the last 5 s > 0.05 rad, i.e. a limit cycle inside the ±0.2 rad band):
+
+| Velocity information | No delay, float force | One-step delay, 8-bit force |
+|---|---|---|
+| full state (bound) | any (23 params) | any (23) |
+| `fd`, reactive MLP | 1024† (23); tight from 4096 | 1024 (23, tight: 96/96 %) |
+| `hist` k = 3 | 1024† (29) | **256†** (29); tight from 1024 (29) |
+| `hist` k = 4 | **256†** (35) | **256†** (35); tight from 1024 (35) |
+| `fd` + rnn:4 | **256†** (61) | 4096 (61) |
+| `raw` k = 2 (no differencing) | 1024† (49) | **none** |
+| `pos` + RNN | 1024† (rnn:4, 49); 4096† (rnn:2, 21) | 1024† (rnn:2, 21) |
+| `pos` + MLP (no velocity, no memory) | 4096† (33) | **none** (0 % everywhere) |
+| classic + fd (3,132 numbers) | 4096 (balance only) | 4096 |
+| classic + model-based α-β (3,139) | 1024 | 1024 |
+
+What the map says:
+
+1. **The ±0.2 rad task band admits balancing without velocity.** A 33-param reactive MLP on
+   positions alone holds 85–93 % for 20 s as a ~0.1 rad limit cycle, but drifts off at 60 s
+   and dies completely under a one-step delay. So "balances" is reported together with 60 s
+   success and hold error; the task's own success criterion does not separate these.
+2. **1024 CPR is the practical floor for balance**; below it only controllers with memory (3–4
+   frames or a recurrent state) pass, and they hold loosely. Tight holds need 4096 with a plain
+   differencer, or 1024 with a 3–4 frame history.
+3. **Per parameter, short history wins once delay is included**: `hist` k = 3/4 with mlp:2
+   (29/35 params, 6/9 words of memory) is the only family that passes at 256 under delay and
+   holds tightly from 1024. Without delay the plain differencer with mlp:2 (23 params) is the
+   cheapest at ≥ 1024.
+4. **Differencing must be in the input encoding.** Raw frames (`raw2`) work without delay but
+   fail everywhere under delay: the network cannot form a clean difference inside the ±8 box.
+5. **Delay must be trained for.** Policies trained without delay fail when it is added (fd at
+   ≤ 1024: 0 %), mirroring the zero-shot result; policies trained with delay usually also work
+   without it.
+6. **The cart encoder is not a bottleneck**: 1 mm, 0.1 mm and 0.01 mm give the same picture
+   (differences track optimiser noise).
+7. **Bigger networks often scored 0 %** (mlp:8, rnn:8, 89–137 params): with pop 32 and 600
+   generations CMA-ES did not converge. This is a budget artefact, not a capacity limit.
+8. **int8 is free for the small networks** (within a few % of float in most passing cells),
+   so the bit cost is params × 8: the smallest robust encoder controller is
+   hist3 mlp:2 = 29 × 8 = 232 bits (+ 6 × 14-bit history words), against 3,139 × 32 bits for
+   the classic controller with an observer.
 
 ## Stage 2
+## Stage 2
 
-Runs, tags and commits: [`results/encoder/README.md`](../results/encoder/README.md).
+Launched: Actions run **41161570797** (commit `bf1f45c`, launch label `enc-main-1`), 14 cells × 3
+seeds, up to 4B env steps each, early stop at 99 % validation. Cells (chosen from the stage-1 map):
+
+| Setting | Cells |
+|---|---|
+| no delay | full mlp:4 (bound) · fd 4096 mlp:2 · fd 4096 mlp:4 · fd 1024 mlp:4 · hist3 1024 mlp:2 · hist3 1024 mlp:4 · hist4 256 mlp:2 · fd 256 rnn:4 · pos 1024 rnn:4 |
+| delay + 8-bit | full mlp:4 · fd 4096 mlp:4 · hist3 4096 mlp:4 · hist3 1024 mlp:2 · pos 1024 rnn:2 |
+
+Results: not in yet. Runs, launch labels and commits:
+[`results/encoder/README.md`](../results/encoder/README.md). Each job prints its reports
+(without weights) to the job log as `ENC>` lines; `python experiments/encoder_compact.py --parse
+<log>` turns a saved log back into JSON lines if the artifacts cannot be downloaded.

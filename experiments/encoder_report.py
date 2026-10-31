@@ -150,6 +150,7 @@ def figure(points, path, title):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    import matplotlib.ticker
     from matplotlib.lines import Line2D
     pts = [p for p in points if p["setting"] == "ideal"]
     if not pts:
@@ -167,6 +168,9 @@ def figure(points, path, title):
                        edgecolors="white", linewidths=1.2, zorder=4)
         ax.axhline(90, color="#b0afa8", lw=1, ls="--", zorder=1)
         ax.set_xscale("log")
+        ax.xaxis.set_major_locator(matplotlib.ticker.FixedLocator([200, 500, 1000, 2000, 5000]))
+        ax.xaxis.set_major_formatter(matplotlib.ticker.FixedFormatter(["200", "500", "1k", "2k", "5k"]))
+        ax.xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
         ax.set_title(f"{c} counts/rev  (Δv = {2 * np.pi / c / 0.01:.2g} rad/s)", fontsize=10)
         ax.set_xlabel("parameters × bits per parameter")
         ax.grid(True, color="#e6e5e0", lw=0.6, zorder=0)
@@ -179,7 +183,7 @@ def figure(points, path, title):
     h += [Line2D([], [], marker="o", ls="", color="#52514e", mfc="none", label="float32 (hollow)"),
           Line2D([], [], marker="o", ls="", color="#52514e", label="int8 (filled)")]
     fig.legend(handles=h, loc="lower center", ncol=8, frameon=False, fontsize=8.5)
-    fig.suptitle(title, fontsize=11)
+    fig.suptitle(title + "\n(points at 0 % are optimiser failures within the fixed budget, not capacity limits)", fontsize=10.5)
     fig.tight_layout(rect=(0, 0.1, 1, 0.95))
     fig.savefig(path, dpi=130)
     plt.close(fig)
