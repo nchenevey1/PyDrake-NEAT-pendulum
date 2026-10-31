@@ -1,0 +1,16 @@
+{'controller': 'classic+fd', 'setting': 'ideal', 'cpr': 256, 'x_res': 0.0001, 'alpha': None, 'stored_numbers': 3132, 'balance_20s': 0.0, 'test_20s': 0.0, 'test_60s_64': 0.0, 'seconds': 2}
+{'controller': 'classic+ab', 'setting': 'ideal', 'cpr': 256, 'x_res': 0.0001, 'alpha': 0.05, 'stored_numbers': 3139, 'balance_20s': 0.0, 'test_20s': 0.0, 'test_60s_64': 0.0, 'seconds': 6}
+{'controller': 'classic+fd', 'setting': 'ideal', 'cpr': 1024, 'x_res': 0.0001, 'alpha': None, 'stored_numbers': 3132, 'balance_20s': 0.0, 'test_20s': 0.0, 'test_60s_64': 0.0, 'seconds': 3}
+{'controller': 'classic+ab', 'setting': 'ideal', 'cpr': 1024, 'x_res': 0.0001, 'alpha': 0.1, 'stored_numbers': 3139, 'balance_20s': 1.0, 'test_20s': 0.99609375, 'test_60s_64': 1.0, 'seconds': 59}
+{'controller': 'classic+fd', 'setting': 'ideal', 'cpr': 4096, 'x_res': 0.0001, 'alpha': None, 'stored_numbers': 3132, 'balance_20s': 1.0, 'test_20s': 0.1015625, 'test_60s_64': 0.09375, 'seconds': 10}
+{'controller': 'classic+ab', 'setting': 'ideal', 'cpr': 4096, 'x_res': 0.0001, 'alpha': 0.1, 'stored_numbers': 3139, 'balance_20s': 1.0, 'test_20s': 1.0, 'test_60s_64': 1.0, 'seconds': 62}
+{'controller': 'classic+fd', 'setting': 'ideal', 'cpr': 16384, 'x_res': 0.0001, 'alpha': None, 'stored_numbers': 3132, 'balance_20s': 1.0, 'test_20s': 1.0, 'test_60s_64': 1.0, 'seconds': 38}
+{'controller': 'classic+ab', 'setting': 'ideal', 'cpr': 16384, 'x_res': 0.0001, 'alpha': 0.1, 'stored_numbers': 3139, 'balance_20s': 1.0, 'test_20s': 1.0, 'test_60s_64': 1.0, 'seconds': 63}
+{'controller': 'classic+fd', 'setting': 'real', 'cpr': 256, 'x_res': 0.0001, 'alpha': None, 'stored_numbers': 3132, 'balance_20s': 0.0, 'test_20s': 0.0, 'test_60s_64': 0.0, 'seconds': 2}
+{'controller': 'classic+ab', 'setting': 'real', 'cpr': 256, 'x_res': 0.0001, 'alpha': 0.05, 'stored_numbers': 3139, 'balance_20s': 0.0, 'test_20s': 0.0, 'test_60s_64': 0.0, 'seconds': 6}
+{'controller': 'classic+fd', 'setting': 'real', 'cpr': 1024, 'x_res': 0.0001, 'alpha': None, 'stored_numbers': 3132, 'balance_20s': 0.0, 'test_20s': 0.0, 'test_60s_64': 0.0, 'seconds': 3}
+{'controller': 'classic+ab', 'setting': 'real', 'cpr': 1024, 'x_res': 0.0001, 'alpha': 0.1, 'stored_numbers': 3139, 'balance_20s': 1.0, 'test_20s': 0.9765625, 'test_60s_64': 0.984375, 'seconds': 59}
+{'controller': 'classic+fd', 'setting': 'real', 'cpr': 4096, 'x_res': 0.0001, 'alpha': None, 'stored_numbers': 3132, 'balance_20s': 1.0, 'test_20s': 0.015625, 'test_60s_64': 0.015625, 'seconds': 8}
+{'controller': 'classic+ab', 'setting': 'real', 'cpr': 4096, 'x_res': 0.0001, 'alpha': 0.1, 'stored_numbers': 3139, 'balance_20s': 1.0, 'test_20s': 1.0, 'test_60s_64': 1.0, 'seconds': 64}
+{'controller': 'classic+fd', 'setting': 'real', 'cpr': 16384, 'x_res': 0.0001, 'alpha': None, 'stored_numbers': 3132, 'balance_20s': 1.0, 'test_20s': 0.51171875, 'test_60s_64': 0.609375, 'seconds': 25}
+{'controller': 'classic+ab', 'setting': 'real', 'cpr': 16384, 'x_res': 0.0001, 'alpha': 0.1, 'stored_numbers': 3139, 'balance_20s': 1.0, 'test_20s': 1.0, 'test_60s_64': 1.0, 'seconds': 64}

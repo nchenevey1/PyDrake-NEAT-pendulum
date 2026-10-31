@@ -40,5 +40,33 @@
     "cmd": "for i in 4 5 6 7; do python experiments/encoder_stage1.py --settings ideal --seeds 0 --shard $i/8 --out runs/encoder/stage1_ideal0_$i.jsonl > runs/encoder/stage1_ideal0_$i.txt 2>&1 & done; wait"
    }
   ]
+ },
+ "s1v2": {
+  "cells": [
+   {
+    "name": "s1-real-a",
+    "cmd": "for i in 0 1 2 3; do python experiments/encoder_stage1.py --settings real --seeds 0 --shard $i/8 --out runs/encoder/stage1_real_$i.jsonl > runs/encoder/stage1_real_$i.txt 2>&1 & done; wait"
+   },
+   {
+    "name": "s1-real-b",
+    "cmd": "for i in 4 5 6 7; do python experiments/encoder_stage1.py --settings real --seeds 0 --shard $i/8 --out runs/encoder/stage1_real_$i.jsonl > runs/encoder/stage1_real_$i.txt 2>&1 & done; wait"
+   },
+   {
+    "name": "s1-ideal-seed1-a",
+    "cmd": "for i in 0 1 2 3; do python experiments/encoder_stage1.py --settings ideal --seeds 1 --shard $i/8 --out runs/encoder/stage1_ideal1_$i.jsonl > runs/encoder/stage1_ideal1_$i.txt 2>&1 & done; wait"
+   },
+   {
+    "name": "s1-ideal-seed1-b",
+    "cmd": "for i in 4 5 6 7; do python experiments/encoder_stage1.py --settings ideal --seeds 1 --shard $i/8 --out runs/encoder/stage1_ideal1_$i.jsonl > runs/encoder/stage1_ideal1_$i.txt 2>&1 & done; wait"
+   },
+   {
+    "name": "s1-ideal-seed0-a",
+    "cmd": "for i in 0 1 2 3; do python experiments/encoder_stage1.py --settings ideal --seeds 0 --shard $i/8 --out runs/encoder/stage1_ideal0_$i.jsonl > runs/encoder/stage1_ideal0_$i.txt 2>&1 & done; wait"
+   },
+   {
+    "name": "s1-ideal-seed0-b",
+    "cmd": "for i in 4 5 6 7; do python experiments/encoder_stage1.py --settings ideal --seeds 0 --shard $i/8 --out runs/encoder/stage1_ideal0_$i.jsonl > runs/encoder/stage1_ideal0_$i.txt 2>&1 & done; wait"
+   }
+  ]
  }
 }
