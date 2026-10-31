@@ -42,6 +42,7 @@ jobs:
       matrix: ${{ steps.p.outputs.matrix }}
       sanity_n: ${{ steps.p.outputs.sanity_n }}
       grid: ${{ steps.p.outputs.grid }}
+      minw: ${{ steps.p.outputs.minw }}
     steps:
       - uses: actions/checkout@v4
       - id: p
@@ -70,6 +71,7 @@ jobs:
           with open(e["GITHUB_OUTPUT"], "a") as f:
               f.write(f"name={job['name']}\nrho0={job['rho0']}\nshards={n}\n")
               f.write(f"sanity_n={job.get('sanity_n', 1000000)}\ngrid={job.get('grid', 4)}\n")
+              f.write(f"minw={job.get('minw', 0.001)}\n")
               f.write("matrix=" + json.dumps(list(range(n))) + "\n")
           print(job)
 
@@ -93,6 +95,7 @@ jobs:
           nproc
           python experiments/certify_balance.py run ${{ needs.plan.outputs.name }} \
             --rho0 ${{ needs.plan.outputs.rho0 }} --grid ${{ needs.plan.outputs.grid }} \
+            --minw ${{ needs.plan.outputs.minw }} \
             --shard ${{ matrix.shard }} ${{ needs.plan.outputs.shards }} \
             --out out/shard_${{ matrix.shard }}.json
           cat out/shard_${{ matrix.shard }}.json
