@@ -1,0 +1,6 @@
+# Reliability of the start-state curriculum with adaptive step: mlp:4 (45 params), 5 seeds,
+# 4B training env steps each (docs/RESEARCH_PLAN.md). Goal: >= 90 % test in >= 3 of 5 seeds.
+configs: [configs/cmaes_mlp4_revcurr.yaml]
+seeds: [0, 1, 2, 3, 4]
+set: ["budget.env_steps=4000000000"]
+drake_starts: 16

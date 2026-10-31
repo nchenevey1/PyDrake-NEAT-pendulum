@@ -9,7 +9,7 @@ method_cfg:
 budget:
   generations: null
   env_steps: 4000000000      # 4B training env steps (incl. mastery checks)
-  wall_hours: 5.5            # GitHub-hosted job limit is 6 h
+  wall_hours: 5.0            # GitHub job timeout is 340 min: leave time for the report
   stop_val_success: 0.99     # as in the experiment script: stop at >= 99 % validation success
 train:
   n_trials: 8                # 4 starts at the current level + 4 at a replayed level

@@ -1,0 +1,108 @@
+# Experiment sweeps on GitHub-hosted runners.
+#
+# Push a tag `sweep-<plan>-<n>` (e.g. sweep-smoke-1) to run sweeps/<plan>.yaml from the tagged
+# commit, or start it by hand (workflow_dispatch, plan name as input). One job per
+# (config, seed); each job trains with sweep.py (resumable), writes report.json, runs the
+# held-out test report + Drake check (verify.json) and uploads the run directory without
+# checkpoints. The `collect` job merges all runs and writes the summary table.
+name: sweep
+
+on:
+  push:
+    tags: ["sweep-*"]
+  workflow_dispatch:
+    inputs:
+      plan:
+        description: "sweep plan: sweeps/<plan>.yaml"
+        required: true
+        default: smoke
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      plan: ${{ steps.p.outputs.plan }}
+      matrix: ${{ steps.p.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - id: p
+        env:
+          REF: ${{ github.event_name == 'workflow_dispatch' && inputs.plan || github.ref_name }}
+        run: python ci/sweep_plan.py "$REF" | tee -a "$GITHUB_OUTPUT"
+
+  run:
+    needs: plan
+    name: ${{ matrix.name }}_s${{ matrix.seed }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: Tests
+        run: python -m pytest -q tests
+      - name: Train
+        # one run per job: give it all 4 vCPUs (numba threads); results do not depend on threads
+        run: >-
+          python sweep.py --jobs 4 --seeds ${{ matrix.seed }} --set threads=4 ${{ matrix.set }}
+          -- ${{ matrix.config }}
+      - name: Verify (test 20 s / 60 s, int8, weight noise, Drake)
+        if: always()
+        run: |
+          d=runs/${{ matrix.name }}_s${{ matrix.seed }}
+          if [ -f "$d/best_val.json" ]; then
+            python evaluate.py "$d/best_val.json" --no-prune --drake ${{ matrix.drake }} --out "$d/verify.json" > "$d/verify.log"
+          fi
+          python ci/summarize.py runs >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.name }}_s${{ matrix.seed }}
+          path: |
+            runs/${{ matrix.name }}_s${{ matrix.seed }}/
+            !runs/**/checkpoint.pkl
+            !runs/**/*.tmp
+          retention-days: 90
+
+  collect:
+    needs: [plan, run]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          path: runs
+      - name: Summary
+        run: |
+          python ci/summarize.py runs --json runs/summary.json | tee runs/summary.md
+          { echo "## Sweep \`${{ needs.plan.outputs.plan }}\` at ${GITHUB_SHA::12}"; echo; cat runs/summary.md; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: summary-${{ needs.plan.outputs.plan }}
+          path: |
+            runs/summary.json
+            runs/summary.md
+            runs/*/report.json
+            runs/*/verify.json
+            runs/*/best_val.json
+            runs/*/best_val_pruned.json
+            runs/*/config.yaml
+          retention-days: 90

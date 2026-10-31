@@ -1,0 +1,5 @@
+# Same as reliability-mlp4 for mlp:8 (89 params).
+configs: [configs/cmaes_mlp8_revcurr.yaml]
+seeds: [0, 1, 2, 3, 4]
+set: ["budget.env_steps=4000000000"]
+drake_starts: 16

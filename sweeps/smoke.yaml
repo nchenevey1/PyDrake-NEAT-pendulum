@@ -1,0 +1,5 @@
+# Tiny-budget check of the Actions pipeline (train, report, Drake check, artifacts).
+configs: [configs/cmaes_mlp4_revcurr.yaml]
+seeds: [0, 1]
+set: ["budget.env_steps=20000000"]
+drake_starts: 4
