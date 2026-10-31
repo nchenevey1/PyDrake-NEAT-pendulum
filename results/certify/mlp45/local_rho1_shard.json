@@ -1,0 +1,33 @@
+{
+ "rho": 1.0,
+ "rho0": 1.0,
+ "rho_safe": 33.958079315514006,
+ "eps": 0.0019798224944613764,
+ "kappa": 0.9999950868001138,
+ "complete": true,
+ "stats": {
+  "evaluated": 3199570,
+  "verified": 1478275,
+  "outside": 243020,
+  "in_ball": 64,
+  "failed_small": 0,
+  "counterexample": 0
+ },
+ "worst_z": [
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0
+ ],
+ "seconds": 118.22911214828491,
+ "shard": [
+  0,
+  1
+ ],
+ "name": "mlp45",
+ "setup_hash": "1efa5ff40547d9c2",
+ "grid": 2,
+ "minw": 0.001
+}
