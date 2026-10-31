@@ -1,0 +1,5 @@
+{
+ "smoke": {"cells": [
+  {"name": "smoke-fd4096-mlp4", "args": "--mode fd --cpr 4096 --arch mlp:4 --drake 2", "seeds": "0 1", "budget": 0.003}
+ ]}
+}

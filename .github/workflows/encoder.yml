@@ -1,0 +1,57 @@
+# Stage 2 of the encoder study (docs/ENCODER_SENSING.md).
+# Push a tag enc-<set>-<anything> (e.g. enc-smoke-1, enc-main-1) or dispatch with a set name;
+# cells come from experiments/encoder_stage2.json[<set>]. One job per cell runs its seeds in
+# parallel (one process per core) and uploads runs/encoder as an artifact.
+name: encoder
+on:
+  push:
+    tags: ['enc-*']
+  workflow_dispatch:
+    inputs:
+      set:
+        description: cell set in experiments/encoder_stage2.json
+        required: true
+        default: smoke
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: m
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then SET="${{ github.event.inputs.set }}";
+          else SET=$(echo "${GITHUB_REF_NAME}" | cut -d- -f2); fi
+          echo "set=$SET"
+          python3 -c "import json,sys; c=json.load(open('experiments/encoder_stage2.json'))['$SET']; print('matrix='+json.dumps({'include':c['cells']}))" >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
+  run:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install numpy numba cma pyyaml drake
+      - name: train (seeds in parallel)
+        run: |
+          for s in ${{ matrix.seeds }}; do
+            python experiments/encoder_curriculum.py ${{ matrix.args }} --seed $s --budget ${{ matrix.budget }} --out runs/encoder > /dev/null 2>&1 &
+          done
+          wait
+          tail -n 3 runs/encoder/*.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: enc-${{ matrix.name }}
+          path: runs/encoder/
