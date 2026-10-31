@@ -98,6 +98,40 @@ as the full-state result. No dense rewards.
   replay (16 starts, Python reference of the sensor model), and success when the delay setting
   is switched.
 
+## Early findings (before any training)
+
+**1. Semi-implicit Euler makes one-step differencing exact.** The plant (and Drake's discrete
+plant) updates q⁺ = q + dt·v⁺, so (q_t − q_{t−1}) / dt is the *current* velocity exactly; the
+only error is quantization. A constant-velocity α-β filter, in contrast, lags by
+≈ A·dt·(α − β/2)/β ≈ 0.7 rad/s at the swing-up's ~100 rad/s² and failed at every CPR. On real
+hardware (continuous plant, sampled encoder) the difference is a half-step-lagged average.
+
+**2. The 45-param full-state policy works zero-shot on encoder velocities** (no retraining;
+`results/experiments/revcurr_mlp4_s0_v12.json` through `fd`, 256 test starts, 20 s):
+
+| Pole CPR | cart 1 mm | 0.1 mm | 0.01 mm | with one-step delay |
+|---|---|---|---|---|
+| exact state | – | 100 % | – | **0 %** |
+| 256 | 0 % | 0 % | 0 % | 0 % |
+| 1024 | 64 % | 61 % | 62 % | 0 % |
+| 4096 | 99.6 % | **100 %** | 99.6 % | 0 % |
+| 16384 | 99.2 % | 100 % | 99.6 % | 0 % |
+
+8-bit force command: 100 %. So velocity *sensing* costs nothing down to 4096 CPR; the binding
+constraint is **actuation delay**, which breaks even the exact-state policy.
+
+**3. Classic reference through the encoders** (`experiments/encoder_classic.py`, swing-up test
+20 s, 256 starts):
+
+| | 256 | 1024 | 4096 | 16384 |
+|---|---|---|---|---|
+| classic + fd (3,132 numbers) | 0 % | 0 % | 10 % (balance alone 100 %) | 100 % |
+| classic + model-based α-β observer (3,139 numbers) | 0 % | **99.6 %** | 100 % | 100 % |
+
+As predicted from the gains (fd force noise ≈ 50 N RMS at 4096, 12 N at 16384), the
+high-gain TVLQR needs 16384 CPR with a plain differencer; a model-based observer (+7 numbers)
+moves the threshold to 1024. Realistic setting (delay + 8-bit): see `results/encoder/summary.md`.
+
 ## Stage 1 results
 
 (filled in below by `experiments/encoder_stage1.py`; raw: `results/encoder/stage1.jsonl`)
