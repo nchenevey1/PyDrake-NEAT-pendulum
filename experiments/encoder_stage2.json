@@ -68,5 +68,93 @@
     "cmd": "for i in 4 5 6 7; do python experiments/encoder_stage1.py --settings ideal --seeds 0 --shard $i/8 --out runs/encoder/stage1_ideal0_$i.jsonl > runs/encoder/stage1_ideal0_$i.txt 2>&1 & done; wait"
    }
   ]
+ },
+ "main": {
+  "cells": [
+   {
+    "name": "full-mlp4",
+    "args": "--mode full --arch mlp:4 --drake 16",
+    "seeds": "0 1 2",
+    "budget": 4.0
+   },
+   {
+    "name": "fd4096-mlp2",
+    "args": "--mode fd --cpr 4096 --arch mlp:2 --drake 16",
+    "seeds": "0 1 2",
+    "budget": 4.0
+   },
+   {
+    "name": "fd4096-mlp4",
+    "args": "--mode fd --cpr 4096 --arch mlp:4 --drake 16",
+    "seeds": "0 1 2",
+    "budget": 4.0
+   },
+   {
+    "name": "fd1024-mlp4",
+    "args": "--mode fd --cpr 1024 --arch mlp:4 --drake 16",
+    "seeds": "0 1 2",
+    "budget": 4.0
+   },
+   {
+    "name": "hist3-1024-mlp2",
+    "args": "--mode hist --k 3 --cpr 1024 --arch mlp:2 --drake 16",
+    "seeds": "0 1 2",
+    "budget": 4.0
+   },
+   {
+    "name": "hist3-1024-mlp4",
+    "args": "--mode hist --k 3 --cpr 1024 --arch mlp:4 --drake 16",
+    "seeds": "0 1 2",
+    "budget": 4.0
+   },
+   {
+    "name": "hist4-256-mlp2",
+    "args": "--mode hist --k 4 --cpr 256 --arch mlp:2 --drake 16",
+    "seeds": "0 1 2",
+    "budget": 4.0
+   },
+   {
+    "name": "fd256-rnn4",
+    "args": "--mode fd --cpr 256 --arch rnn:4 --drake 16",
+    "seeds": "0 1 2",
+    "budget": 4.0
+   },
+   {
+    "name": "pos1024-rnn4",
+    "args": "--mode pos --cpr 1024 --arch rnn:4 --drake 16",
+    "seeds": "0 1 2",
+    "budget": 4.0
+   },
+   {
+    "name": "real-full-mlp4",
+    "args": "--delay 1 --force-bits 8 --mode full --arch mlp:4 --drake 16",
+    "seeds": "0 1 2",
+    "budget": 4.0
+   },
+   {
+    "name": "real-fd4096-mlp4",
+    "args": "--delay 1 --force-bits 8 --mode fd --cpr 4096 --arch mlp:4 --drake 16",
+    "seeds": "0 1 2",
+    "budget": 4.0
+   },
+   {
+    "name": "real-hist3-4096-mlp4",
+    "args": "--delay 1 --force-bits 8 --mode hist --k 3 --cpr 4096 --arch mlp:4 --drake 16",
+    "seeds": "0 1 2",
+    "budget": 4.0
+   },
+   {
+    "name": "real-hist3-1024-mlp2",
+    "args": "--delay 1 --force-bits 8 --mode hist --k 3 --cpr 1024 --arch mlp:2 --drake 16",
+    "seeds": "0 1 2",
+    "budget": 4.0
+   },
+   {
+    "name": "real-pos1024-rnn2",
+    "args": "--delay 1 --force-bits 8 --mode pos --cpr 1024 --arch rnn:2 --drake 16",
+    "seeds": "0 1 2",
+    "budget": 4.0
+   }
+  ]
  }
 }
