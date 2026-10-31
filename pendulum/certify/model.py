@@ -249,25 +249,26 @@ def trace_closed_loop(cd: ControllerData, g=None, masses=None, force_dist=None):
     dt = p.const(cd.dt)
     l1, l2 = p.const(L1), p.const(L2)
     s12 = I.sin(t1 + t2); c12 = I.cos(t1 + t2)
-    a1x = -(l1 * c1); a1z = l1 * s1
-    b1x = -(l1 * c1) - l2 * c12; b1z = l1 * s1 + l2 * s12
-    b2x = -(l2 * c12); b2z = l2 * s12
+    # physics_step's mass matrix and bias terms, simplified with sin^2 + cos^2 = 1 and the angle
+    # difference formulas (equal in real arithmetic; removes interval dependency losses):
+    #   m11 = M1 L1^2 + M2 (L1^2 + L2^2 + 2 L1 L2 cos th2),  m12 = M2 (L2^2 + L1 L2 cos th2), ...
+    #   r1  = -M1 L1 g s1 - M2 [L1 L2 s2 (w1^2 - (w1 + w2)^2) + g (L1 s1 + L2 s12)]
+    #   r2  = -M2 [L1 L2 s2 w1^2 + g L2 s12]
+    # (tests/test_certify.py checks this program against rollout.physics_step).
     m00 = MCv + M1v + M2v
-    m01 = M1v * a1x + M2v * b1x
-    m02 = M2v * b2x
-    m11 = M1v * (a1x * a1x + a1z * a1z) + M2v * (b1x * b1x + b1z * b1z)
-    m12 = M2v * (b1x * b2x + b1z * b2z)
-    m22 = M2v * (b2x * b2x + b2z * b2z)
+    m01 = -((M1v + M2v) * (l1 * c1)) - M2v * (l2 * c12)
+    m02 = -(M2v * (l2 * c12))
+    l1l2c2 = l1 * l2 * c2
+    m11 = M1v * (l1 * l1) + M2v * (l1 * l1 + l2 * l2 + 2.0 * l1l2c2)
+    m12 = M2v * (l2 * l2 + l1l2c2)
+    m22 = M2v * (l2 * l2)
+    w1s = w1 * w1
     pd = w1 + w2
-    p1x = l1 * s1 * w1 * w1
-    p1z = l1 * c1 * w1 * w1 + gv
-    p2x = p1x + l2 * s12 * pd * pd
-    p2z = l1 * c1 * w1 * w1 + l2 * c12 * pd * pd + gv
-    # The accelerations are affine in the cart force: a = m(q) u + p(x), with m = M^{-1} e_0 and
-    # p the accelerations at u = 0 (identical to physics_step, whose r0 = u - M1 p1x - M2 p2x).
-    r0 = -(M1v * p1x) - M2v * p2x
-    r1 = -(M1v * (a1x * p1x + a1z * p1z)) - M2v * (b1x * p2x + b1z * p2z)
-    r2 = -(M2v * (b2x * p2x + b2z * p2z))
+    # u = 0 part of the generalized forces (physics_step: r0 = u - M1 p1x - M2 p2x, ...)
+    r0 = -((M1v + M2v) * (l1 * s1 * w1s)) - M2v * (l2 * s12 * (pd * pd))
+    r1 = -(M1v * (l1 * gv * s1)) - M2v * (l1 * l2 * s2 * (-(w2 * (2.0 * w1 + w2)))
+                                           + gv * (l1 * s1 + l2 * s12))
+    r2 = -(M2v * (l1 * l2 * s2 * w1s + gv * (l2 * s12)))
     k00 = m11 * m22 - m12 * m12
     k01 = m02 * m12 - m01 * m22
     k02 = m01 * m12 - m02 * m11

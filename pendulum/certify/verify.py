@@ -135,15 +135,16 @@ def eval_box(D, zlo, zhi, V, VC, G, res):
     Program outputs: u (cart force), m = M(q)^{-1} e_0, p = accelerations at u = 0, so a = m u + p.
     With float m0, gu, Jp (linearisation at z = 0) and Jz = m0 gu + Jp:
         s(z) = a(x(z)) - Jz z = m0 su(z) + (m(z) - m0) u(z) + sp(z),
-        su = u - gu z,   sp = p - Jp z   (enclosed by mean-value forms),
-        dV = z^T N z + 2 (A_hat z)^T E z + 2 (bm z) su + 2 (B z)^T [(m - m0) u + sp] + |E z + WG s|^2
-    with B = WG^T A_hat, bm = m0^T B. Keeping the control channel u scalar preserves the strong
+        su = u - gu z,   sp = p - Jp z,
+        dV = z^T N z + 2 (A_hat z)^T E z + 2 (bm z) su + 2 (B z)^T t + |E z + (WG m0) su + WG t|^2,
+        t = (m - m0) u + sp,  B = WG^T A_hat,  bm = m0^T B. Keeping the control channel u scalar preserves the strong
     cancellation in W Gamma m0 (the input direction in z-coordinates).
 
     res[0] = upper bound of dV over the box, res[1] = lower bound of dV at the box center,
-    res[2] = lower bound of |c|^2, res[3] = dimension to split."""
+    res[2] = lower bound of |c|^2, res[3] = dimension to split; res[4:8] = diagnostic split of
+    the bound into the su, t, E/|r|^2 and quadratic terms (approximate, not rigorous)."""
     (ops, cst, out, xs, Mlo, Mhi, Ah, Nlo, Nhi, Elo, Ehi, WGlo, WGhi, Blo, Bhi, WPMlo, WPMhi,
-     m0, gu, Jp, bmlo, bmhi) = D
+     m0, gu, Jp, bmlo, bmhi, wbm0, wbm1) = D
     n = 6
     c = np.empty(n); h = np.empty(n)
     for j in range(n):
@@ -155,54 +156,20 @@ def eval_box(D, zlo, zhi, V, VC, G, res):
     _imatvec_affine(xs, Mlo, Mhi, c, c, Clo, Chi)
     I.run_prog_mv(ops, cst, Xlo, Xhi, Clo, Chi, h, V, VC, G, Mlo, Mhi)
     ou = out[0]
-    # su over the box
-    su0 = VC[ou, 0]; su1 = VC[ou, 1]
-    for j in range(n):
-        p0, p1 = imul(gu[j], gu[j], c[j], c[j])
-        su0, su1 = isub(su0, su1, p0, p1)
-    for j in range(n):
-        g0, g1 = isub(G[ou, j, 0], G[ou, j, 1], gu[j], gu[j])
-        p0, p1 = imul(g0, g1, -h[j], h[j])
-        su0, su1 = iadd(su0, su1, p0, p1)
-    U0 = V[ou, 0]; U1 = V[ou, 1]
-    # t_k = (m_k - m0_k) u + sp_k ;  s_k = m0_k su + t_k
-    T0 = np.empty(3); T1 = np.empty(3); S0 = np.empty(3); S1 = np.empty(3)
+    # program outputs 7..10: phi = 2 (bm z) su + 2 (B z)^T t, su, t (ranges are mean-value refined)
+    of = out[7]
+    su0 = V[out[8], 0]; su1 = V[out[8], 1]
+    T0 = np.empty(3); T1 = np.empty(3)
     ac0 = np.empty(3); ac1 = np.empty(3)
     for k in range(3):
         om = out[1 + k]; op = out[4 + k]
-        d0, d1 = isub(V[om, 0], V[om, 1], m0[k], m0[k])
-        t0, t1 = imul(d0, d1, U0, U1)
-        q0 = VC[op, 0]; q1 = VC[op, 1]
-        for j in range(n):
-            p0, p1 = imul(Jp[k, j], Jp[k, j], c[j], c[j])
-            q0, q1 = isub(q0, q1, p0, p1)
-        for j in range(n):
-            g0, g1 = isub(G[op, j, 0], G[op, j, 1], Jp[k, j], Jp[k, j])
-            p0, p1 = imul(g0, g1, -h[j], h[j])
-            q0, q1 = iadd(q0, q1, p0, p1)
-        t0, t1 = iadd(t0, t1, q0, q1)
-        T0[k] = t0; T1[k] = t1
-        p0, p1 = imul(m0[k], m0[k], su0, su1)
-        S0[k], S1[k] = iadd(p0, p1, t0, t1)
+        T0[k] = V[out[9 + k], 0]; T1[k] = V[out[9 + k], 1]
         # a(c) = m(c) u(c) + p(c)
         p0, p1 = imul(VC[om, 0], VC[om, 1], VC[ou, 0], VC[ou, 1])
         ac0[k], ac1[k] = iadd(p0, p1, VC[op, 0], VC[op, 1])
-    acc0 = 0.0; acc1 = 0.0
-    # 2 (bm z) su
-    v0 = 0.0; v1 = 0.0
-    for j in range(n):
-        p0, p1 = imul(bmlo[j], bmhi[j], zlo[j], zhi[j])
-        v0, v1 = iadd(v0, v1, p0, p1)
-    p0, p1 = imul(v0, v1, su0, su1)
-    acc0, acc1 = iadd(acc0, acc1, 2.0 * p0, 2.0 * p1)       # *2 is exact
-    # 2 (B z)^T t
-    for k in range(3):
-        v0 = 0.0; v1 = 0.0
-        for j in range(n):
-            p0, p1 = imul(Blo[k, j], Bhi[k, j], zlo[j], zhi[j])
-            v0, v1 = iadd(v0, v1, p0, p1)
-        p0, p1 = imul(v0, v1, T0[k], T1[k])
-        acc0, acc1 = iadd(acc0, acc1, 2.0 * p0, 2.0 * p1)
+    acc0 = V[of, 0]; acc1 = V[of, 1]
+    res[4] = acc1
+    res[5] = 0.0
     # 2 (A_hat z)^T E z + |E z + WG s|^2
     for i in range(n):
         a0 = 0.0; a1 = 0.0; e0 = 0.0; e1 = 0.0
@@ -213,12 +180,15 @@ def eval_box(D, zlo, zhi, V, VC, G, res):
             e0, e1 = iadd(e0, e1, p0, p1)
         p0, p1 = imul(a0, a1, e0, e1)
         acc0, acc1 = iadd(acc0, acc1, 2.0 * p0, 2.0 * p1)
-        r0 = e0; r1 = e1
+        # r_i = (E z)_i + (WG m0)_i su + (WG t)_i
+        p0, p1 = imul(wbm0[i], wbm1[i], su0, su1)
+        r0, r1 = iadd(e0, e1, p0, p1)
         for k in range(3):
-            p0, p1 = imul(WGlo[i, k], WGhi[i, k], S0[k], S1[k])
+            p0, p1 = imul(WGlo[i, k], WGhi[i, k], T0[k], T1[k])
             r0, r1 = iadd(r0, r1, p0, p1)
         q0, q1 = isqr(r0, r1)
         acc0, acc1 = iadd(acc0, acc1, q0, q1)
+    res[6] = acc1 - res[4] - res[5]
     # z^T N z
     for i in range(n):
         for j in range(n):
@@ -246,15 +216,13 @@ def eval_box(D, zlo, zhi, V, VC, G, res):
         c20, c21 = iadd(c20, c21, q0, q1)
     dv0, dv1 = isub(dv0, dv1, c20, c21)
     # split hint: largest first-order contribution of h_j to the bound
-    vb = 0.0
-    for i in range(n):
-        vb += abs(bmlo[i]) * (abs(c[i]) + h[i])
     best = -1.0; bj = 0
     for j in range(n):
-        gw = max(abs(G[ou, j, 0] - gu[j]), abs(G[ou, j, 1] - gu[j]))
-        sc = h[j] * (2.0 * vb * gw + abs(Nlo[j, j]) * (abs(c[j]) + h[j]))
+        gw = max(abs(G[of, j, 0]), abs(G[of, j, 1]))
+        sc = h[j] * (gw + abs(Nlo[j, j]) * (abs(c[j]) + h[j]))
         if sc > best:
             best = sc; bj = j
+    res[7] = acc1 - res[4] - res[5] - res[6]
     res[0] = acc1 if acc1 == acc1 else np.inf
     res[1] = dv0 if dv0 == dv0 else -np.inf
     res[2] = c20
@@ -281,15 +249,16 @@ def _norm2_bounds(zlo, zhi):
 
 
 @nb.njit(cache=True)
-def bnb_one(D, blo, bhi, rho0, eps2, minw, max_boxes, stats, worst):
+def bnb_one(D, blo, bhi, rho0, eps2, minw, minw_abs, max_boxes, stats, worst):
     """Branch and bound on one initial box. Returns the certified level (<= rho0), or -1 if the
-    box budget ran out. stats: [evaluated, verified, outside, in_ball, failed_small, counterex].
+    box budget ran out. A box that cannot be verified is given up when its width is below
+    minw * min|z| (or minw_abs); it then lowers rho to its min |z|^2. stats: [evaluated, verified, outside, in_ball, failed_small, counterex].
     worst: center of the box that set the final rho (diagnostic)."""
     ops = D[0]
     n = 6
     nv = ops.shape[0]
     V = np.zeros((nv, 2)); VC = np.zeros((nv, 2)); G = np.zeros((nv, n, 2))
-    res = np.zeros(4)
+    res = np.zeros(8)
     cap = 4096
     SL = np.empty((cap, n)); SH = np.empty((cap, n))
     SL[0] = blo; SH[0] = bhi; sp = 1
@@ -323,7 +292,7 @@ def bnb_one(D, blo, bhi, rho0, eps2, minw, max_boxes, stats, worst):
         wmax = 0.0
         for j in range(n):
             wmax = max(wmax, zhi[j] - zlo[j])
-        if wmax < minw:
+        if wmax < minw * math.sqrt(mn2) or wmax < minw_abs:
             stats[4] += 1
             if mn2 < rho:
                 rho = mn2
@@ -345,7 +314,7 @@ def bnb_one(D, blo, bhi, rho0, eps2, minw, max_boxes, stats, worst):
 
 
 @nb.njit(cache=True, parallel=True)
-def bnb_many(D, BL, BH, rho0, eps2, minw, max_boxes):
+def bnb_many(D, BL, BH, rho0, eps2, minw, minw_abs, max_boxes):
     K = BL.shape[0]
     rhos = np.empty(K)
     stats = np.zeros((K, 6))
@@ -353,7 +322,7 @@ def bnb_many(D, BL, BH, rho0, eps2, minw, max_boxes):
     for k in nb.prange(K):
         st = np.zeros(6)
         wv = np.zeros(6)
-        rhos[k] = bnb_one(D, BL[k], BH[k], rho0, eps2, minw, max_boxes, st, wv)
+        rhos[k] = bnb_one(D, BL[k], BH[k], rho0, eps2, minw, minw_abs, max_boxes, st, wv)
         stats[k] = st
         worst[k] = wv
     return rhos, stats, worst
@@ -446,6 +415,40 @@ class Prepared:
     y0: tuple              # enclosure of y(0) = W (F(x*) - x*)
 
 
+def _augment(p, xs, W, m0, gu, Jp, B, bm):
+    """Append the cubic part of dV to the program (outputs 7: phi, 8: su, 9-11: t)."""
+    from .interval import Var
+    xin = [Var(p, i) for i in range(6)]          # ops 0..5 are the inputs, in order
+    assert all(p.ops[i] == (I.OP_INPUT, i, 0, 0) for i in range(6))
+    u = p.outputs[0]; m = p.outputs[1:4]; pa = p.outputs[4:7]
+    e = [xin[j] - float(xs[j]) for j in range(6)]
+    z = []
+    for i in range(6):
+        acc = None
+        for j in range(6):
+            if W[i, j] != 0.0:
+                t = float(W[i, j]) * e[j]
+                acc = t if acc is None else acc + t
+        z.append(acc)
+
+    def lin(coef, lohi=None):
+        acc = None
+        for j in range(6):
+            cj = p.const(lohi[0][j], lohi[1][j]) if lohi is not None else float(coef[j])
+            if lohi is None and coef[j] == 0.0:
+                continue
+            t = cj * z[j] if lohi is not None else cj * z[j]
+            acc = t if acc is None else acc + t
+        return acc
+    su = u - lin(gu)
+    t = [(m[k] - float(m0[k])) * u + (pa[k] - lin(Jp[k])) for k in range(3)]
+    phi = 2.0 * (lin(None, bm) * su)
+    for k in range(3):
+        phi = phi + 2.0 * (lin(None, (B[0][k], B[1][k])) * t[k])
+    p.outputs = list(p.outputs[:7]) + [phi, su] + t
+    return p
+
+
 def prepare(cd: ControllerData, st: Setup) -> Prepared:
     p = trace_closed_loop(cd, g=st.g, masses=st.masses, force_dist=st.force_dist)
     ops, cst, out = p.arrays()
@@ -504,8 +507,13 @@ def prepare(cd: ControllerData, st: Setup) -> Prepared:
     _imatmul(m0r, m0r, Blo, Bhi, bmlo, bmhi)
     Nlo = np.zeros((6, 6)); Nhi = np.zeros((6, 6))
     interval_N(Ah, Nlo, Nhi)
+    # augmented program: append z, su, t and phi = 2 (bm z) su + 2 (B z)^T t
+    p = _augment(p, xs, W, m0, gu, Jp, (Blo, Bhi), (bmlo[0], bmhi[0]))
+    ops, cst, out = p.arrays()
+    wb0 = np.zeros((6, 1)); wb1 = np.zeros((6, 1))
+    _imatmul(WG0, WG1, m0.reshape(3, 1).copy(), m0.reshape(3, 1).copy(), wb0, wb1)
     data = (ops, cst, out, xs, Mlo, Mhi, Ah, Nlo, Nhi, Elo, Ehi, WG0, WG1, Blo, Bhi, WPM0, WPM1,
-            m0, gu, Jp, bmlo[0].copy(), bmhi[0].copy())
+            m0, gu, Jp, bmlo[0].copy(), bmhi[0].copy(), wb0[:, 0].copy(), wb1[:, 0].copy())
     return Prepared(st, ops, cst, out, Mlo, Mhi, data, (y0lo[:, 0], y0hi[:, 0]))
 
 
@@ -534,7 +542,7 @@ def ball_check(pp: Prepared, eps: float):
     ||D y||_2 <= ||A_hat||_2 + ||E||_F + |WG m0| |D u - gu| + ||WG||_F ||rest||_F = kappa
     (exact PD test for ||A_hat||_2). y(0) = WG a(x*) since x(0) = x* exactly."""
     (ops, cst, out, xs, Mlo, Mhi, Ah, Nlo, Nhi, Elo, Ehi, WG0, WG1, Blo, Bhi, _, _,
-     m0, gu, Jp, _, _) = pp.data
+     m0, gu, Jp, _, _, _, _) = pp.data
     V = np.zeros((len(ops), 2)); VC = np.zeros((len(ops), 2)); G = np.zeros((len(ops), 6, 2))
     zl = np.full(6, -eps); zh = np.full(6, eps)
     Xlo = np.zeros(6); Xhi = np.zeros(6)
@@ -622,8 +630,8 @@ def certify(cd: ControllerData, st: Setup, task_limits=(2.8, 0.2), rho0=None, gr
     BL, BH = initial_boxes(R, grid)
     sel = np.arange(shard[0], len(BL), shard[1])
     BL, BH = BL[sel], BH[sel]
-    minw = minw_rel * R
-    rhos, stats, worst = bnb_many(pp.data, BL, BH, rho0, eps * eps * (1 - 1e-12), minw, max_boxes)
+    rhos, stats, worst = bnb_many(pp.data, BL, BH, rho0, eps * eps * (1 - 1e-12), minw_rel,
+                                  eps * 1e-3, max_boxes)
     complete = bool(np.all(rhos >= 0))
     k = int(np.argmin(rhos))
     rho = float(rhos[k]) if complete else -1.0
