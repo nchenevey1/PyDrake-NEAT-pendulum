@@ -6,7 +6,7 @@
 the track (|x| ≤ 2.8 m) forever, under the exact discrete-time closed loop of
 `rollout.physics_step` (dt = 0.01 s, u = 100 N × policy output, real observation pipeline)?
 
-**Status (this session): steps 1–3 done for the 45-param controller.** Per the stop rule, the
+**Status: steps 1–3 done for the 45-param controller (certified ρ = 1.6152).** Per the stop rule, the
 comparisons (pruned, int8/int6, LQR), the 10⁶-sample check, the empirical region and the
 certified catch (steps 5–7) are prepared but not run. The maximal-level run is launched on Actions.
 
@@ -19,12 +19,13 @@ certified catch (steps 5–7) are prepared but not run. The maximal-level run is
 | Jacobian at x* = (0.9958, π, 0, 0, 0, 0): spectral radius | **0.99743** (slow complex pair 0.99739 ± 0.0085i: cart-position mode, time constant ≈ 3.9 s) |
 | Lyapunov function | V = (x − x*)ᵀ P (x − x*), P from (A/β)ᵀP(A/β) − P = −Q, β = 0.999, Q = diag(1/[1.8, 0.2, 0.2, 1, 1, 1]²) |
 | Level allowed by the safe set (ρ_safe) | 33.96 (Ω_ρ ⊂ upright ∩ track) |
-| **Certified level ρ (rigorous)** | **ρ = 1.0** (complete B&B, 3.2 M boxes, 118 s on 2 cores; `recheck` from scratch: confirmed) |
+| **Certified level ρ (rigorous)** | **ρ = 1.6152** (Actions run 41163866994: 10 shards, 78 M boxes, complete; `mlp45/certificate_actions.json`). Locally certified and rechecked from scratch: ρ = 1.0 (3.2 M boxes, 118 s) |
 | Empirical upper bound for this V (falsification) | ρ ≤ 1.764: an explicit state with \|z\|² = 1.764 where V does not decrease |
-| Certified set extent (max \|x − x*\| over Ω_ρ, ρ = 1) | x ±0.082 m, θ1 ±0.032 rad, θ2 ±0.034 rad, ẋ ±0.53 m/s, ω1 ±0.51 rad/s, ω2 ±0.51 rad/s |
-| Certified volume (state units m·rad²·(m/s)·(rad/s)²) | 2.57 × 10⁻⁷ |
+| Certified set extent (max \|x − x*\| over Ω_ρ, ρ = 1.6152) | x ±0.105 m, θ1 ±0.041 rad, θ2 ±0.044 rad, ẋ ±0.67 m/s, ω1 ±0.65 rad/s, ω2 ±0.65 rad/s |
+| Certified volume (state units m·rad²·(m/s)·(rad/s)²) | 1.08 × 10⁻⁶ (ρ = 1.6152); 2.57 × 10⁻⁷ at ρ = 1 |
 | Sanity: 20 000 samples of Ω_ρ (half in the outer 1 % shell), 60 s, repository episode kernel | **0 failures** |
-| Maximal level for this V (Actions, ρ₀ = 1.764) | running ([41163866994](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41163866994)) |
+| Gap to the empirical bound | certified 1.6152 vs counterexample at 1.7643: **92 %** of the best level for this V (volume ratio (1.615/1.764)³ = 77 %) |
+| Sanity at ρ = 1.6152 | local: 40 000 samples (half in the outer 1 % shell), 60 s: **0 failures**; Actions 10⁶ × 60 s: see run log |
 
 What limits the region: not the safe set (ρ_safe = 34) but the one-step decrease. The slowest
 mode contracts by only 0.9974 per step, so V can shrink by at most ~0.5 % per step, and the
@@ -113,22 +114,25 @@ launches the job described there. Results are uploaded as artifacts and printed 
 | Launch | Run | Commit | Job | Status |
 |---|---|---|---|---|
 | smoke (`"smoke": true`) | [41163608223](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41163608223) | 748d0d8 | mlp45, ρ₀ = 0.05, 2 shards, 10⁴ samples | **success**: ρ = 0.05 complete (31k boxes), sanity 0/10⁴ failures |
-| job.json (no tag: agent sessions cannot push tags) | [41163866994](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41163866994) | 241a81b | mlp45, ρ₀ = 1.764 (sampled bound), 10 shards, grid 4, give-up width 1 % of \|z\|, then 10⁶ × 60 s sanity | launched 2026-10-31 03:19 UTC, not awaited; download `cert-mlp45-result` next session |
+| job.json (no tag: agent sessions cannot push tags) | [41163866994](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41163866994) | 241a81b | mlp45, ρ₀ = 1.764 (sampled bound), 10 shards, grid 4, give-up width 1 % of \|z\|, then 10⁶ × 60 s sanity | **success**: all 10 shards complete (2–21 min each), combine ok, **ρ = 1.6152** (limiting shard 8; shard 4: 1.6172); 2154 proven counterexample centers, 220 boxes given up at 1 % width |
 
 ## What failed or is inconclusive
 
 * Plain Lyapunov P (β = 1): the ε-ball contraction failed for every ε (decrease rate 1.4e-4).
 * Naive interval Jacobian of F in Lyapunov coordinates: ~1500× wider than the true Jacobian
   variation; certification was hopeless until the structure above was used.
-* ρ is certified at 1.0 locally; the gap to the empirical bound 1.764 is not yet closed (the
-  Actions run starts at 1.764 and lowers the level wherever a box cannot be verified).
+* The certified level 1.6152 is 8 % below the empirical bound 1.7643. Part of the gap is the 1 %
+  give-up width (220 boxes, which set the level to their min |z|^2), part is real counterexamples
+  close to the bound (2154 proven at box centers, nearest |c|^2 = 1.64). The limiting point
+  (z ≈ (−0.03, −0.38, −0.34, −0.69, −0.35, −0.89)) is in the same direction as the sampled
+  counterexample. A full `recheck` at 1.6152 needs ~1.6 core-hours (Actions, not local).
 * The certificate is for the real-number map with float64 constants. The float64 simulator
   differs from it by rounding (~1e-16 per step); this is not separately bounded.
 * No CROWN/auto_LiRPA tightening and no SOS comparison (optional steps) were attempted.
 
 ## Next steps (prepared, not run)
 
-1. Download the Actions result (maximal ρ for this V), then `recheck`.
+1. Re-run the certificate at ρ₀ = 1.6152 on Actions as an independent recheck (job.json with `"rho0": 1.6151688736209255`).
 2. Optimise Q (and β) for certified volume; the sampled bound is a cheap proxy.
 3. Same pipeline for `mlp45_pruned` (regenerated with `evaluation.greedy_prune`), `mlp45_int8`,
    `mlp45_int6`, `lqr`: `setup NAME`, then set `results/certify/job.json`.
