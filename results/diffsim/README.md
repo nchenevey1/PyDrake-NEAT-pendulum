@@ -9,8 +9,8 @@ Velocity observation scale is 12 throughout. Surrogate objectives are used only 
 diagnostics; success is always measured by the numba kernel.
 
 **Status (2026-10-31).** Steps 1–3 are done: literature review, a verified JAX port, and gradient
-diagnostics. The brief says to stop here and report. Steps 4–6 (training comparison on GitHub
-Actions) are not started; see [Next steps](#next-steps).
+diagnostics. Steps 4–5 are implemented and smoke-tested; step 6 runs on GitHub Actions (launch log in
+[section 6](#6-runs-on-github-actions)); results are downloaded and analysed next session.
 
 Work is on branch `claude/vigilant-thompson-548nni`, the branch this session was assigned. It
 replaces the requested `research/diffsim` and is based on `claude/modest-carson-qx8ce5`.
@@ -204,20 +204,64 @@ These are hypotheses, not results.
 
 ---
 
-## Next steps
+## 4–5. Objectives and methods (`diffsim/train.py`, `diffsim/campaign.py`)
 
-Steps 4–6 have not started. The design follows the diagnostics:
-* surrogates (a) soft sparse score with temperature annealed from ~0.1 toward 0.005, (b) segment
-  terminal cost in the start-state curriculum, (c) energy + upright dense reference (labelled as such);
-* methods at equal budget, counting env steps with backward passes charged at the runner's measured
-  ratio (~6.6× here);
-* `.github/workflows/diffsim.yml` (tags `diff-*` + dispatch, `max-parallel: 5`, artifacts), smoke-tested first;
-* size ladder × methods × 3 seeds;
-* hyperparameters tuned on validation with equal tuning budgets.
+**Surrogates (training only; evaluation always uses the exact sparse criterion).**
 
-| Tag | Run ID | Commit | Status |
+| | Definition | Used by |
+|---|---|---|
+| (a) smoothed sparse score | soft streak s_k = u_k (s_{k−1} + dt), with u = sigmoid upright indicator (both angles within 0.2 rad, as cos-threshold) × sigmoid on-track indicator; loss = −mean s_k after the 2.5 s deadline over a 4 s rollout. Temperature annealed geometrically from `temp0` to 0.002 over the budget (as temp → 0, s_k is the task's exact consecutive-upright counter). | bptt_full, bptt_trunc |
+| (b) curriculum-segment terminal cost | from the curriculum level's start S_nom[k] ± 0.05, a segment of L steps; loss = chord-angle + position + velocity error to S_nom[k+L] (or upright once k+L passes the nominal's upright time) **+ the task's deadline rule as a soft constraint** (angles must stay inside 0.15 rad after the level's deadline) **+ a balance-hold term** (mean error to upright from upright ± 0.05, horizon growing 0.5 s → 3 s when the hold cost is < 0.05) | bptt_curr, zo_curr, hybrid |
+| (c) **dense-reward reference** | mean over a 4 s rollout of ((E − E_up)/E_up)² + upright state cost; E = mechanical energy of the two masses. Reference only: the brief's main question is about sparse success. | bptt_dense |
+
+Why (b) has two extra terms (found on training rollouts of mlp:4 seed 0, before any tuning or
+validation): with the terminal cost alone the policy swung out of tolerance mid-segment and came
+back by the segment end (episodes ended at 0.42 s); with the deadline rule added it caught upright
+but drifted off in ~1.8 s, a slow unstable mode that a 0.5 s segment cannot see. A fixed 3 s hold
+horizon from an untrained policy stalled at loss ≈ 1 (chaotic, uninformative gradients, as section 3
+predicts); growing the horizon from 0.5 s fixed that, and the curriculum then moved to starts 1.3 s
+into the swing-up within 0.4B units. **Caveat:** this design iteration used a main-run seed (0) at
+the training level, not the tuning seed.
+
+**Methods** (identical initialisation `build_arch(arch, 9, default_rng(seed))`, identical
+curriculum code, mastery rule and validation/model-selection code):
+
+| Method | Optimiser | Signal | Tuned grid (4 configs each) |
 |---|---|---|---|
-| — | — | — | no Actions runs launched yet |
+| `cmaes` | CMA-ES, start-state curriculum (`experiments/reverse_curriculum.py`) | sparse score | popsize × sigma0 ∈ {64, 0.5}, {32, 0.5}, {128, 0.5}, {64, 0.25} |
+| `bptt_curr` | Adam (+ global-norm clip 1, box projection) in the same curriculum | ∇(b), BPTT over the segment | lr {1e-2, 3e-3} × L {50, 100} |
+| `zo_curr` | Adam in the same curriculum | antithetic randomized-smoothing estimate of ∇(b), 32 pairs, one perturbation per start | lr {1e-2, 3e-3} × σ {0.03, 0.1} |
+| `bptt_full` | Adam, starts from the task distribution | ∇(a), full BPTT over 4 s | lr {1e-2, 3e-3} × temp0 {0.3, 0.05} |
+| `bptt_trunc` | Adam | ∇(a), state and streak gradient cut every W steps | lr {1e-2, 3e-3} × W {25, 50} |
+| `bptt_dense` | Adam | ∇(c), full BPTT over 4 s — **dense reference** | lr {3e-2, 1e-2, 3e-3, 1e-3} |
+| `hybrid` | CMA-ES curriculum for a fraction `switch` of the budget, then `bptt_curr` from the CMA-ES mean at the level reached | sparse, then ∇(b) | lr {1e-2, 3e-3} × switch {0.5, 0.75} |
+
+**Budget accounting.** Env-step equivalents: a forward step = 1, a step that is also
+backpropagated = the measured (forward + backward) / forward wall-time ratio of that architecture,
+measured at start-up of each run on its own core (5–7 here). Mastery checks count; validation does
+not (as before). Main runs: 2B units; tuning: 0.4B units per config.
+
+**Tuning protocol (same for every method).** 4 configs × 0.4B on mlp:4, tuning seed 100 (not a
+main seed); selection by validation success, then deepest curriculum level, then mean validation
+streak; ties keep the default (first) config. Test is never computed in tuning.
+
+**Experiment.** 7 methods × {mlp:2, mlp:4, mlp:8} × seeds {0, 1, 2}, one core per run (taskset; 3
+seeds in parallel per 4-vCPU job). Reported per run: test success at 20 s and 60 s (256 test starts,
+best-validation policy), Drake closed-loop replay on 16 test starts for any run with test success
+> 0, success per billion units spent until the selected policy was found, the closest curriculum
+start reached, wall clock.
+
+## 6. Runs on GitHub Actions
+
+Workflow `.github/workflows/diffsim.yml`: setup → tune (7 jobs) → select → main (21 jobs, 3 seeds
+each) → report (tables + Drake check), `max-parallel: 5`, artifacts `tune-*`, `chosen`, `main-*`,
+`report`. Triggers: tags `diff-*` and `workflow_dispatch` (both need the workflow on the default
+branch / a tag push, which this session cannot do), and **commits that change `diffsim/LAUNCH`**
+on this branch (first word = `smoke` | `full`).
+
+| Launch | Run ID | Commit | Mode | Status |
+|---|---|---|---|---|
+| `diffsim/LAUNCH` = `smoke diff-smoke-1` | [41161943548](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41161943548) | 5162f96 | smoke | queued at 02:53 UTC |
 
 ## Files
 
@@ -228,6 +272,9 @@ Steps 4–6 have not started. The design follows the diagnostics:
 | `tests/test_jax_port.py` | equivalence tests against the numba kernel |
 | `diffsim/diagnostics.py` | `chaos`, `gradnorm`, `cosine [names]`, `timing` sections |
 | `diffsim/plot_diagnostics.py` | figures |
+| `diffsim/train.py` | the seven training methods, budget accounting, model selection, test + Drake check |
+| `diffsim/campaign.py` | tune / select / main / report driver used by the workflow |
+| `.github/workflows/diffsim.yml`, `diffsim/LAUNCH` | Actions campaign and its launch file |
 | `results/diffsim/diag/*.json` | raw diagnostic data |
 
 Reproduce, from the repository root:
