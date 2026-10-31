@@ -322,8 +322,8 @@ def run_gradient(method, template, theta0, hp, budget, cur, sel, rng):
         bal_eval = jax.jit(lambda th, Sb, h: jnp.mean(jax.vmap(bal1, (None, 0, None))(th, Sb, h)))
         h_bal = 50.0
         if method == "zo_curr":
-            n_bal = n_b                    # each antithetic pair evaluates one segment + one balance rollout
             n_b = hp["pairs"]; sig = hp["sigma"]
+            n_bal = n_b                    # each antithetic pair evaluates one segment + one balance rollout
 
             @jax.jit
             def grad_fn(theta, S0, tg, dl, Sb, h, key):
