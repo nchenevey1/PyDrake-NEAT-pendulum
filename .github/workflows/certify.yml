@@ -2,6 +2,8 @@
 #
 #   git tag cert-smoke-N && git push origin cert-smoke-N   -> smoke test (small level, 2 shards)
 #   git tag cert-<label>  && git push origin cert-<label>   -> job described in results/certify/job.json
+#   a push to a certify branch that changes results/certify/job.json -> that job ("smoke": true
+#     gives the smoke test); used from agent sessions, which cannot push tags
 #   or "Run workflow" (workflow_dispatch) with explicit inputs.
 #
 # Artifacts: one JSON per shard, and certificate.json + sanity.json from the combine job.
@@ -10,6 +12,8 @@ name: certify
 on:
   push:
     tags: ["cert-*"]
+    branches: ["claude/certify-*", "research/certify-*"]
+    paths: ["results/certify/job.json"]
   workflow_dispatch:
     inputs:
       name:
@@ -55,10 +59,11 @@ jobs:
           if e["EVENT"] == "workflow_dispatch":
               job = {"name": e["IN_NAME"], "rho0": e["IN_RHO0"], "shards": int(e["IN_SHARDS"]),
                      "sanity_n": int(e["IN_SANITY"]), "grid": 4}
-          elif e["REF"].startswith("cert-smoke"):
-              job = {"name": "mlp45", "rho0": 0.05, "shards": 2, "sanity_n": 10000, "grid": 2}
           else:
               job = json.load(open("results/certify/job.json"))
+              if e["REF"].startswith("cert-smoke") or job.get("smoke"):
+                  job = {"name": job.get("name", "mlp45"), "rho0": 0.05, "shards": 2,
+                         "sanity_n": 10000, "grid": 2}
           if job.get("rho0") in ("", None):
               job["rho0"] = json.load(open(f"results/certify/{job['name']}/setup.json"))["rho_sampled_upper"]
           n = int(job["shards"])
@@ -112,11 +117,14 @@ jobs:
           merge-multiple: true
           path: shards/
       - name: combine
-        run: python experiments/certify_balance.py combine ${{ needs.plan.outputs.name }} shards/*.json
+        run: |
+          for f in shards/*.json; do echo "== $f"; cat $f; done
+          python experiments/certify_balance.py combine ${{ needs.plan.outputs.name }} shards/*.json
       - name: sanity (simulate samples of the certified set for 60 s)
         run: |
           python experiments/certify_balance.py sanity ${{ needs.plan.outputs.name }} \
             --n ${{ needs.plan.outputs.sanity_n }} --seconds 60 --out results/certify/${{ needs.plan.outputs.name }}/sanity.json
+          cat results/certify/${{ needs.plan.outputs.name }}/sanity.json
       - if: always()
         uses: actions/upload-artifact@v4
         with:
