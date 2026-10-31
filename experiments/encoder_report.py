@@ -122,18 +122,43 @@ def classic_table():
 
 
 def load_stage2(d):
-    rows = []
+    """Stage-2 reports: JSON files in d (downloaded artifacts) and JSON lines transcribed from the
+    Actions job logs (results/encoder/actions/stage2_*.jsonl). One row per tag (artifact wins)."""
+    rows = {}
+    for p in sorted(glob.glob(str(R / "actions" / "stage2_*.jsonl"))):
+        for l in open(p):
+            r = json.loads(l)
+            rows[r["tag"]] = r
     for p in sorted(glob.glob(str(Path(d) / "**" / "*.json"), recursive=True)):
         r = json.load(open(p))
         if "tag" in r:
-            rows.append(r)
-    return rows
+            rows[r["tag"]] = r
+    return list(rows.values())
+
+
+def stage2_cells(rows):
+    by = defaultdict(list)
+    for r in rows:
+        by[r["tag"].rsplit("_s", 1)[0]].append(r)
+    out = ["\n**Stage 2 per cell** (3 seeds; solved = ≥ 90 % test at 20 s)\n",
+           "| Cell | Params | Memory | Seeds solved | Test 20 s per seed | Best: 60 s / int8 / Drake | Closest start per seed (s) |",
+           "|---|---|---|---|---|---|---|"]
+    for cell, rr in sorted(by.items()):
+        rr.sort(key=lambda r: r["seed"])
+        b = max(rr, key=lambda r: r["test_20s"])
+        d = b.get("drake")
+        dr = f"{d['drake']}/{d['n']}" if isinstance(d, dict) else "–"
+        out.append(f"| {cell} | {b['params']} | {b['memory_words']} | {sum(r['test_20s'] >= 0.9 for r in rr)}/{len(rr)} | "
+                   + " · ".join(f"{r['test_20s'] * 100:.1f}" for r in rr)
+                   + f" | {b['test_60s'] * 100:.1f} / {b['int8_20s'] * 100:.1f} / {dr} | "
+                   + " · ".join(str(r["closest_start_s"]) for r in rr) + " |")
+    return "\n".join(out)
 
 
 def stage2_table(rows):
     if not rows:
         return ""
-    out = ["\n**Stage 2: swing-up + balance (real task)**, per seed\n",
+    out = [stage2_cells(rows), "\n**Stage 2: swing-up + balance (real task)**, per seed\n",
            "| Run | Params | Memory | Closest start (s) | Steps (B) | Test 20 s | 60 s | int8 | Delay switched | Drake |",
            "|---|---|---|---|---|---|---|---|---|---|"]
     for r in sorted(rows, key=lambda r: r["tag"]):
