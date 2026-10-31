@@ -19,6 +19,8 @@ Inspired by [johnBuffer/Pendulum-NEAT](https://github.com/johnBuffer/Pendulum-NE
 | Evolution + deadline curriculum | 45–89 | 0 % (89 params got to a 2.6 s deadline, 0.1 s short) |
 | Evolution + start-state curriculum (CMA-ES), original observation scales | 45 | up to 9 % after 2B steps (2 seeds: 9 %, 0.4 %) |
 | **Same, velocity observations rescaled to the real range** | **45** | **100 %** in 1 of 4 runs (1.1B steps, 9 min); others 0–1.6 % |
+| Same (CMA-ES, scale 12), diffsim campaign, 2B steps, 3 seeds × 3 sizes × 2 settings | 45–89 | ≥ 97 % in 4 of 18 runs (mlp:4 ×2, mlp:8 ×2, all Drake-checked) |
+| Gradients through a JAX port of the simulator (BPTT, truncated, in-curriculum, + ZO smoothing) | 23–89 | 0 % in 45 runs; see [results/diffsim](results/diffsim/README.md) |
 
 A 45-parameter network can solve the task (100 % test, 60 s, Drake-verified, 43 params after
 pruning). The open problem is finding it *reliably*. Why earlier runs failed and what changed:
@@ -34,7 +36,7 @@ pruning). The open problem is finding it *reliably*. Why earlier runs failed and
 | [docs/TASK_AND_EVALUATION.md](docs/TASK_AND_EVALUATION.md) | task constants, sparse score, evaluation protocol, classic reference |
 | [docs/IMPLEMENTATION_NOTES.md](docs/IMPLEMENTATION_NOTES.md) | code layout, methods, tests, bugs fixed |
 | [results/experiments/README.md](results/experiments/README.md) | diagnostic experiments and their results |
-| [results/diffsim/README.md](results/diffsim/README.md) | differentiable simulation: JAX port, gradient-vs-chaos diagnostics, literature (in progress) |
+| [results/diffsim/README.md](results/diffsim/README.md) | differentiable simulation: JAX port, gradient-vs-chaos diagnostics, literature, BPTT vs CMA-ES campaign |
 | [configs/README.md](configs/README.md) | experiment configurations |
 
 ## Quick start

@@ -8,10 +8,19 @@ The task, the 256 test starts and the success definition are unchanged (`docs/TA
 Velocity observation scale is 12 throughout. Surrogate objectives are used only for training and
 diagnostics; success is always measured by the numba kernel.
 
-**Status (2026-10-31).** Steps 1–3 are done: literature review, a verified JAX port, and gradient
-diagnostics. Steps 4–5 are implemented and smoke-tested on Actions; the full step-6 campaign is
-running as Actions run 41163084288 (launch log in [section 6](#6-runs-on-github-actions)). Its
-results are downloaded and analysed next session; nothing below section 6 contains training results yet.
+**Status (2026-10-31).** All steps are done. The full campaign (Actions run 41163084288: 7 methods ×
+3 sizes × 3 seeds, 2B env-step equivalents each) is analysed in [section 7](#7-results-diff-full-1).
+
+**Answer in one paragraph.** At equal env-step budget, no gradient method beat CMA-ES on this task.
+CMA-ES on the exact sparse score inside the start-state curriculum solved 4 of 18 runs (≥ 97 % test,
+Drake-verified). Every gradient method solved 0 of 45. On the *same* differentiable surrogate inside
+the same curriculum, first-order gradients beat zeroth-order randomized smoothing in 9 of 9 paired
+runs (reaching starts 1.30–1.35 s into the swing-up against 1.70–1.75 s), as the diagnostics
+predicted for windows ≤ 1 s. But both stalled far short of CMA-ES (0.45–0.55 s, or the full task),
+and the stall is caused by the surrogate, not by gradient quality: the policy reaches the reference
+state in the surrogate's metric but not the region from which it actually succeeds. Gradient
+refinement after CMA-ES never improved validation success. Full-horizon and truncated BPTT on a
+smoothed sparse score, and the dense energy reference, never produced a single validation success.
 
 Work is on branch `claude/vigilant-thompson-548nni`, the branch this session was assigned. It
 replaces the requested `research/diffsim` and is based on `claude/modest-carson-qx8ce5`.
@@ -201,7 +210,11 @@ minimisers, and the sparse relaxation gives none.
 * The hybrid (CMA-ES, then small-σ gradient refinement) should help robustness or speed only once
   CMA-ES has found a funnel.
 
-These are hypotheses, not results.
+These were written before the runs. Outcome (section 7): the first held (full BPTT never left the
+hanging basin). The second held only against randomized smoothing: curriculum BPTT beat ZO in 9/9
+paired runs, but truncated BPTT from rest failed and neither curriculum arm came near CMA-ES. The
+third could not be tested as stated: gradient refinement after an *unsolved* CMA-ES phase never
+improved validation, and the solved runs stopped before refinement started.
 
 ---
 
@@ -264,7 +277,91 @@ on this branch (first word = `smoke` | `full`).
 |---|---|---|---|---|
 | `diffsim/LAUNCH` = `smoke diff-smoke-1` | [41161943548](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41161943548) | 5162f96 | smoke | failed: `zo_curr` batch-size ordering bug (select/main skipped) |
 | `diffsim/LAUNCH` = `smoke diff-smoke-2` | [41162542568](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41162542568) | 395cce1 | smoke | **success**, all jobs, 5 min; all artifacts incl. `report` |
-| `diffsim/LAUNCH` = `full diff-full-1` | [41163084288](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41163084288) | dc26910 | full | queued 2026-10-31 03:08 UTC; expected ~4 h. **Download next session:** artifact `report` (report.md, report.json, chosen.json) plus `main-*` (policies, logs) and `tune-*` |
+| `diffsim/LAUNCH` = `full diff-full-1` | [41163084288](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41163084288) | dc26910 | full | **success**, all 31 jobs, 03:08–04:22 UTC (73 min). Report transcribed to [`full1/report.md`](full1/report.md) |
+
+The artifacts (policies, per-run learning curves) could not be downloaded into the analysis session:
+artifact storage (`productionresultssa14.blob.core.windows.net`) is blocked by its network policy.
+The final table, the selected configurations and each run's summary are in the job logs, which is
+what section 7 uses. Per-run learning curves are not analysed.
+
+## 7. Results (diff-full-1)
+
+Full per-run table: [`full1/report.md`](full1/report.md). Summary (3 seeds per cell; "solved" = test
+success ≥ 90 % on the 256 test starts; test at 60 s equals test at 20 s in every run):
+
+| Method | mlp:2 (23 params) | mlp:4 (45) | mlp:8 (89) | Solved | Closest start reached [s] | Best test success |
+|---|---|---|---|---|---|---|
+| CMA-ES, tuned (popsize 32) | 0.4 / 1.6 / 2.0 % | 0 / **97.3** / 2.0 % | 0 / 0 / 0 % | **1/9** | 0 – 0.55 | 97.3 % (Drake 16/16) |
+| CMA-ES (popsize 64) 75 % → curriculum BPTT 25 % | 0 / 1.2 / 1.2 % | **99.2** / 2.7 / 0 % | 1.6 / **96.9** / **100** % | **3/9** | 0 – 0.55 | 100 % (Drake 16/16) |
+| curriculum BPTT, surrogate (b) | 0 / 0 / 0 % | 0 / 0 / 0.4 % | 0 / 0 / 0 % | 0/9 | 1.30 – 1.35 | 0.4 % |
+| curriculum ZO smoothing, surrogate (b) | 0 / 0 / 0 % | 0 / 0 / 0 % | 0 / 0 / 0 % | 0/9 | 1.70 – 1.75 | 0 % |
+| full BPTT, surrogate (a) | 0 | 0 | 0 | 0/9 | – | 0 % (no validation upright streak at all) |
+| truncated BPTT (W = 25), surrogate (a) | 0 | 0 | 0 | 0/9 | – | 0 % |
+| full BPTT, dense energy (c), **reference** | 0 | 0 | 0 | 0/9 | – | 0 % |
+
+Drake replay (first 16 test starts) of the four solved controllers: 16/16, 16/16, 14/16, 16/16.
+Success per billion env-step equivalents for the solved runs: 0.77–1.03. Wall clock on one pinned
+core of the 4-vCPU runner: 6–20 min to a solution; 4–17 min for a full 2B gradient run; 6–29 min for a
+2B CMA-ES run (mlp:8 is the slowest).
+
+**Findings.**
+
+1. **No gradient method found a controller.** 0 of 45 gradient-only runs reached even 1 % test
+   success; CMA-ES on the sparse score solved 4 of 18 (counting the CMA-ES phase of the hybrid, see 3).
+2. **First order beats zeroth order on the same objective, as predicted.** With identical
+   curriculum, surrogate, budget and tuning, BPTT reached starts 1.30–1.35 s into the swing-up and
+   randomized smoothing 1.70–1.75 s, in every one of the 9 paired runs. Segments are 0.5 s, inside
+   the ≤ 1 s window where section 3 measured FO to be 10–100× cheaper than ZO.
+3. **The hybrid's three solutions all came from its CMA-ES phase.** It switches to gradients at
+   1.5B units; it solved at 0.97B, 1.23B and 1.30B and stopped. In the six unsolved hybrid runs the
+   best validation policy was always found before 1.5B: **0.5B units of gradient refinement never
+   improved validation success**. The hybrid's CMA-ES phase used popsize 64 (the default; tuning
+   chose the switch point and learning rate, not the population). It solved 3/9 against 1/9 for the
+   tuned CMA-ES (popsize 32), so the single-seed tuning picked the weaker CMA-ES setting: popsize 32
+   won tuning on 1 validation success out of 64.
+4. **Why curriculum BPTT stalls (local reproduction, mlp:4 seed 0, same config: stall at 1.30 s
+   from 0.2B to 0.6B units while the loss kept falling).** The surrogate, not the gradient, is the
+   bottleneck:
+   * after a 0.5 s segment from 1.30 s, the policy ends near the reference state at 1.80 s in the
+     surrogate's weighted metric, but with velocity errors of ~0.25–0.3 rad/s (median), which the
+     cost weights lightly. Continuing from those states it succeeds **33 %** of the time, against
+     **97 %** from fresh starts at 1.80 s. Being close to the reference is not being inside the
+     policy's own success region;
+   * the "mastered" levels are not robustly mastered: true success from 1.35–1.6 s starts is
+     47–73 %, although each passed the 80 %-of-16-starts check. Repeated checks every 2M units let a
+     ~50 % policy pass by chance. This affects CMA-ES too (its check is every 5 generations), but less often.
+5. **Full-horizon and truncated BPTT never left the hanging basin.** From rest, surrogate (a) at high
+   temperature acts as dense shaping, and at low temperature its gradient vanishes (section 3a: exactly
+   zero for every random initialisation). Truncation to 25-step windows does not create a signal that
+   is not there. The dense energy reference also failed, so the problem is not only sparsity: 4 s
+   rollouts through the swing-up are in the regime where gradients are noise (section 3).
+6. **Size.** Successes occurred at mlp:4 (2) and mlp:8 (2), none at mlp:2 (23 params; best 2.0 %).
+
+**Checks and caveats.**
+* Two Drake results need a follow-up with the policy files. mlp:8 hybrid seed 1 is 96.9 % in numba
+  but 14/16 in Drake. mlp:2 CMA-ES seed 2 is 2.0 % in numba (5/256) but 3/16 in Drake. My hypothesis,
+  not checked: for controllers without a robust funnel, a 1e-15 per-step difference grows at ~3/s
+  over 20 s, so per-start outcomes are not reproducible across simulators; the 3/16 would then be
+  luck. Check by running numba on the same 16 starts.
+* The surrogates are my designs; a different terminal objective could change finding 4. Surrogate (b)
+  also gained two terms during development on seed 0 (section 4–5).
+* One tuning seed per method is noisy (finding 3).
+* Results are from one campaign; seeds are as listed, none dropped.
+
+### Answer to the research question
+
+*When do analytic first-order gradients beat zeroth-order search at equal compute?* Against
+randomized smoothing on the same differentiable objective, whenever the gradient window is short
+(≤ 1 s ≈ 3 Lyapunov times): first-order gradients were cheaper per unit accuracy in the diagnostics
+and went further back in the curriculum in 9/9 paired runs. Against CMA-ES on the true sparse
+criterion, never in this benchmark: CMA-ES solved 4/18 runs, gradients 0/45.
+
+*How does chaos limit them?* Directly, it rules out long windows: beyond ~1.5 s the gradients of
+controllers that swing up are noise (start agreement ≈ 1/K, up to 10³× the ZO variance), and
+full-horizon BPTT failed in every run. Indirectly, it forces a short-horizon surrogate, and a
+short-horizon surrogate needs a terminal objective that says where the remaining chaotic swing-up
+will succeed. A fixed reference-tracking cost does not, which is where the gradient arm stalled.
+
 
 ## Files
 
