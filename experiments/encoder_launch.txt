@@ -1,1 +1,1 @@
-smoke enc-smoke-1 (launch label; tag pushes are blocked in this session)
+s1 enc-s1-1 (stage-1 realistic setting + ideal seed 1 on Actions)

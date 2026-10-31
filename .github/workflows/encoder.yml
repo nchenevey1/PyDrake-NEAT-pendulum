@@ -47,13 +47,24 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: pip install numpy numba cma pyyaml drake
-      - name: train (seeds in parallel)
+      - name: stage-1 shards (cells with a cmd)
+        if: matrix.cmd
         run: |
+          mkdir -p runs/encoder
+          ${{ matrix.cmd }}
+          wc -l runs/encoder/*.jsonl
+      - name: train (seeds in parallel)
+        if: ${{ !matrix.cmd }}
+        run: |
+          mkdir -p runs/encoder
+          n=0
           for s in ${{ matrix.seeds }}; do
-            python experiments/encoder_curriculum.py ${{ matrix.args }} --seed $s --budget ${{ matrix.budget }} --out runs/encoder > /dev/null 2>&1 &
+            python experiments/encoder_curriculum.py ${{ matrix.args }} --seed $s --budget ${{ matrix.budget }} --out runs/encoder > runs/encoder/stdout_s$s.txt 2>&1 &
+            n=$((n+1))
           done
           wait
-          tail -n 3 runs/encoder/*.log
+          tail -n 3 runs/encoder/*.txt
+          test "$(ls runs/encoder/*.json | wc -l)" -eq "$n"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

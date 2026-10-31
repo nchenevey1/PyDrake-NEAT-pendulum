@@ -1,5 +1,32 @@
 {
- "smoke": {"cells": [
-  {"name": "smoke-fd4096-mlp4", "args": "--mode fd --cpr 4096 --arch mlp:4 --drake 2", "seeds": "0 1", "budget": 0.003}
- ]}
+ "smoke": {
+  "cells": [
+   {
+    "name": "smoke-fd4096-mlp4",
+    "args": "--mode fd --cpr 4096 --arch mlp:4 --drake 2",
+    "seeds": "0 1",
+    "budget": 0.003
+   }
+  ]
+ },
+ "s1": {
+  "cells": [
+   {
+    "name": "s1-real-a",
+    "cmd": "for i in 0 1 2 3; do python experiments/encoder_stage1.py --settings real --seeds 0 --shard $i/8 --out runs/encoder/stage1_real_$i.jsonl > runs/encoder/stage1_real_$i.txt 2>&1 & done; wait"
+   },
+   {
+    "name": "s1-real-b",
+    "cmd": "for i in 4 5 6 7; do python experiments/encoder_stage1.py --settings real --seeds 0 --shard $i/8 --out runs/encoder/stage1_real_$i.jsonl > runs/encoder/stage1_real_$i.txt 2>&1 & done; wait"
+   },
+   {
+    "name": "s1-ideal-seed1-a",
+    "cmd": "for i in 0 1 2 3; do python experiments/encoder_stage1.py --settings ideal --seeds 1 --shard $i/8 --out runs/encoder/stage1_ideal1_$i.jsonl > runs/encoder/stage1_ideal1_$i.txt 2>&1 & done; wait"
+   },
+   {
+    "name": "s1-ideal-seed1-b",
+    "cmd": "for i in 4 5 6 7; do python experiments/encoder_stage1.py --settings ideal --seeds 1 --shard $i/8 --out runs/encoder/stage1_ideal1_$i.jsonl > runs/encoder/stage1_ideal1_$i.txt 2>&1 & done; wait"
+   }
+  ]
+ }
 }
