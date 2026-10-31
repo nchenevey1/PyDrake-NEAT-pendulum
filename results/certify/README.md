@@ -19,12 +19,12 @@ certified catch (steps 5–7) are prepared but not run. The maximal-level run is
 | Jacobian at x* = (0.9958, π, 0, 0, 0, 0): spectral radius | **0.99743** (slow complex pair 0.99739 ± 0.0085i: cart-position mode, time constant ≈ 3.9 s) |
 | Lyapunov function | V = (x − x*)ᵀ P (x − x*), P from (A/β)ᵀP(A/β) − P = −Q, β = 0.999, Q = diag(1/[1.8, 0.2, 0.2, 1, 1, 1]²) |
 | Level allowed by the safe set (ρ_safe) | 33.96 (Ω_ρ ⊂ upright ∩ track) |
-| **Certified level ρ (rigorous)** | **ρ = 1.0** (complete B&B, 3.2 M boxes, 118 s on 2 cores) |
+| **Certified level ρ (rigorous)** | **ρ = 1.0** (complete B&B, 3.2 M boxes, 118 s on 2 cores; `recheck` from scratch: confirmed) |
 | Empirical upper bound for this V (falsification) | ρ ≤ 1.764: an explicit state with \|z\|² = 1.764 where V does not decrease |
 | Certified set extent (max \|x − x*\| over Ω_ρ, ρ = 1) | x ±0.082 m, θ1 ±0.032 rad, θ2 ±0.034 rad, ẋ ±0.53 m/s, ω1 ±0.51 rad/s, ω2 ±0.51 rad/s |
 | Certified volume (state units m·rad²·(m/s)·(rad/s)²) | 2.57 × 10⁻⁷ |
 | Sanity: 20 000 samples of Ω_ρ (half in the outer 1 % shell), 60 s, repository episode kernel | **0 failures** |
-| Maximal level for this V (Actions, ρ₀ = 1.764) | running — see the run log below |
+| Maximal level for this V (Actions, ρ₀ = 1.764) | running ([41163866994](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41163866994)) |
 
 What limits the region: not the safe set (ρ_safe = 34) but the one-step decrease. The slowest
 mode contracts by only 0.9974 per step, so V can shrink by at most ~0.5 % per step, and the
@@ -112,7 +112,8 @@ launches the job described there. Results are uploaded as artifacts and printed 
 
 | Launch | Run | Commit | Job | Status |
 |---|---|---|---|---|
-| smoke (`"smoke": true`) | [41163608223](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41163608223) | 748d0d8 | mlp45, ρ₀ = 0.05, 2 shards, 10⁴ samples | see below |
+| smoke (`"smoke": true`) | [41163608223](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41163608223) | 748d0d8 | mlp45, ρ₀ = 0.05, 2 shards, 10⁴ samples | **success**: ρ = 0.05 complete (31k boxes), sanity 0/10⁴ failures |
+| job.json (no tag: agent sessions cannot push tags) | [41163866994](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41163866994) | 241a81b | mlp45, ρ₀ = 1.764 (sampled bound), 10 shards, grid 4, give-up width 1 % of \|z\|, then 10⁶ × 60 s sanity | launched 2026-10-31 03:19 UTC, not awaited; download `cert-mlp45-result` next session |
 
 ## What failed or is inconclusive
 
