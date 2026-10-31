@@ -106,6 +106,13 @@ def _host_tanh_jvp(primals, tangents):
     return y, (1.0 - y * y) * tangents[0]
 
 
+def unflatten(st: GraphStructure, theta):
+    """Split a flat parameter vector into scalar lists (w, b). Done once per rollout, outside the
+    scan: indexing the vector inside the loop body makes the backward pass scatter into the full
+    vector at every step (~4x slower)."""
+    return ([theta[i] for i in range(st.n_conn)], [theta[i] for i in range(st.n_conn, theta.shape[0])])
+
+
 def forward(st: GraphStructure, theta, obs, exact: bool = False):
     """Policy action in [-1, 1] for flat parameters theta = GraphPolicy.get_flat() = [w, bias].
     Accumulation order matches rollout._forward: bias, then connections in stored order.
@@ -113,7 +120,9 @@ def forward(st: GraphStructure, theta, obs, exact: bool = False):
     Default mode differs from numba by a few ulp (XLA fuses multiply-add into FMA and has its own
     tanh). exact=True blocks the FMA fusion and evaluates tanh with libm on the host, which makes
     the output bit-identical to the numba kernel; it is slow and used only to verify the port."""
-    w = theta[:st.n_conn]; b = theta[st.n_conn:]
+    if not isinstance(theta, (list, tuple)):
+        theta = unflatten(st, theta)
+    w, b = theta
     mul = (lambda x, y: jax.lax.optimization_barrier(x * y)) if exact else (lambda x, y: x * y)
     tanh = _host_tanh if exact else jnp.tanh
     buf = list(obs)
@@ -139,8 +148,10 @@ def rollout(st: GraphStructure, theta, s0, n_steps: int, physics: PhysicsParams 
     """Closed-loop rollout of one start state for n_steps (no termination).
     Returns (states[n_steps, 6] after each step, actions[n_steps]); row k is the state after step k+1,
     i.e. the numba trajectory rows 1..n_steps."""
+    wb = unflatten(st, theta)
+
     def body(s, _):
-        a = forward(st, theta, observe(s, task))
+        a = forward(st, wb, observe(s, task))
         s2 = physics_step(s, a * physics.max_force, physics.g, physics.drag, task.dt)
         return s2, (s2, a)
     _, (S, A) = jax.lax.scan(body, s0, None, length=n_steps)
