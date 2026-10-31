@@ -1,1 +1,1 @@
-s1 enc-s1-1 (stage-1 realistic setting + ideal seed 1 on Actions)
+s1b enc-s1b-1 (stage-1 ideal setting seed 0 on Actions)
