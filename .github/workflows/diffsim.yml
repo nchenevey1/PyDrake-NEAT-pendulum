@@ -1,10 +1,14 @@
 # Differentiable-simulation study (results/diffsim/README.md): tune -> select -> main -> report.
 # Tags diff-smoke-* run a tiny smoke version; any other diff-* tag runs the full campaign.
+# Sessions that may only push their own branch launch by committing diffsim/LAUNCH, whose first
+# word is the mode (smoke | full); its second word is a label for the run.
 name: diffsim
 
 on:
   push:
     tags: ["diff-*"]
+    branches: ["claude/vigilant-thompson-548nni", "research/diffsim"]
+    paths: ["diffsim/LAUNCH"]
   workflow_dispatch:
     inputs:
       mode:
@@ -26,9 +30,11 @@ jobs:
       archs: ${{ steps.cfg.outputs.archs }}
       seeds: ${{ steps.cfg.outputs.seeds }}
     steps:
+      - uses: actions/checkout@v4
       - id: cfg
         run: |
           MODE="${{ github.event.inputs.mode }}"
+          if [ -z "$MODE" ] && [ "${GITHUB_REF_TYPE}" = branch ]; then MODE=$(awk '{print $1; exit}' diffsim/LAUNCH); fi
           if [ -z "$MODE" ]; then
             case "${GITHUB_REF_NAME}" in diff-smoke*) MODE=smoke ;; *) MODE=full ;; esac
           fi
