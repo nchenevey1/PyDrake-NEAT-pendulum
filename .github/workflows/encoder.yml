@@ -1,11 +1,14 @@
 # Stage 2 of the encoder study (docs/ENCODER_SENSING.md).
-# Push a tag enc-<set>-<anything> (e.g. enc-smoke-1, enc-main-1) or dispatch with a set name;
-# cells come from experiments/encoder_stage2.json[<set>]. One job per cell runs its seeds in
+# Launch: push a tag enc-<set>-<anything> (e.g. enc-smoke-1), dispatch with a set name, or (when
+# tag pushes are not allowed, as in the cloud sessions) push a commit to the research branch that
+# changes experiments/encoder_launch.txt, whose first word is the set name. Cells come from experiments/encoder_stage2.json[<set>]. One job per cell runs its seeds in
 # parallel (one process per core) and uploads runs/encoder as an artifact.
 name: encoder
 on:
   push:
     tags: ['enc-*']
+    branches: ['claude/quantized-encoder-swing-up-r876l1']
+    paths: ['experiments/encoder_launch.txt']      # not evaluated for tag pushes
   workflow_dispatch:
     inputs:
       set:
@@ -23,7 +26,8 @@ jobs:
       - id: m
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then SET="${{ github.event.inputs.set }}";
-          else SET=$(echo "${GITHUB_REF_NAME}" | cut -d- -f2); fi
+          elif [ "${{ github.ref_type }}" = "tag" ]; then SET=$(echo "${GITHUB_REF_NAME}" | cut -d- -f2);
+          else SET=$(head -n1 experiments/encoder_launch.txt | cut -d' ' -f1); fi
           echo "set=$SET"
           python3 -c "import json,sys; c=json.load(open('experiments/encoder_stage2.json'))['$SET']; print('matrix='+json.dumps({'include':c['cells']}))" >> "$GITHUB_OUTPUT"
           cat "$GITHUB_OUTPUT"
