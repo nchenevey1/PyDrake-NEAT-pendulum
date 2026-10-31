@@ -8,3 +8,6 @@ pytest>=8
 drake>=1.30
 # optional: only for loading legacy .pth checkpoints and the legacy-equivalence test
 # torch
+# optional: differentiable-simulation study (pendulum/jax_sim.py, diffsim/)
+jax[cpu]>=0.4.30
+optax>=0.2
