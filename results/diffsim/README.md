@@ -9,8 +9,9 @@ Velocity observation scale is 12 throughout. Surrogate objectives are used only 
 diagnostics; success is always measured by the numba kernel.
 
 **Status (2026-10-31).** Steps 1–3 are done: literature review, a verified JAX port, and gradient
-diagnostics. Steps 4–5 are implemented and smoke-tested; step 6 runs on GitHub Actions (launch log in
-[section 6](#6-runs-on-github-actions)); results are downloaded and analysed next session.
+diagnostics. Steps 4–5 are implemented and smoke-tested on Actions; the full step-6 campaign is
+running as Actions run 41163084288 (launch log in [section 6](#6-runs-on-github-actions)). Its
+results are downloaded and analysed next session; nothing below section 6 contains training results yet.
 
 Work is on branch `claude/vigilant-thompson-548nni`, the branch this session was assigned. It
 replaces the requested `research/diffsim` and is based on `claude/modest-carson-qx8ce5`.
@@ -263,7 +264,7 @@ on this branch (first word = `smoke` | `full`).
 |---|---|---|---|---|
 | `diffsim/LAUNCH` = `smoke diff-smoke-1` | [41161943548](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41161943548) | 5162f96 | smoke | failed: `zo_curr` batch-size ordering bug (select/main skipped) |
 | `diffsim/LAUNCH` = `smoke diff-smoke-2` | [41162542568](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41162542568) | 395cce1 | smoke | **success**, all jobs, 5 min; all artifacts incl. `report` |
-| `diffsim/LAUNCH` = `full diff-full-1` | (see next commit) | (this commit) | full | launched 2026-10-31 ~03:10 UTC; expected ~4 h |
+| `diffsim/LAUNCH` = `full diff-full-1` | [41163084288](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41163084288) | dc26910 | full | queued 2026-10-31 03:08 UTC; expected ~4 h. **Download next session:** artifact `report` (report.md, report.json, chosen.json) plus `main-*` (policies, logs) and `tune-*` |
 
 ## Files
 
