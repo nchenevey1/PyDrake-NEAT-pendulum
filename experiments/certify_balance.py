@@ -294,13 +294,16 @@ def cmd_empirical(a):
     p = ok.mean()
     # does the box contain the region? success rate in the outer 10 % of each velocity range
     edge = {k: float(ok[np.abs(X[:, i]) > 0.9 * hi[i]].mean()) for k, i in (("xd", 3), ("w1", 4), ("w2", 5))}
-    rho = _cert_rho(a.name)
-    vc = VF.ellipsoid_volume(np.array(st.W), rho)
+    try:
+        rho = _cert_rho(a.name)
+        vc = VF.ellipsoid_volume(np.array(st.W), rho)
+    except FileNotFoundError:
+        rho, vc = None, None
     out = {"name": a.name, "n": a.n, "seconds": a.seconds, "box_lo": lo.tolist(), "box_hi": hi.tolist(),
            "box_volume": box, "fraction": float(p), "volume": p * box,
            "volume_rel_se": float(np.sqrt((1 - p) / max(a.n * p, 1))),
            "edge_success": edge, "rho_cert": rho, "certified_volume": vc,
-           "certified_over_empirical": vc / (p * box) if p > 0 else None}
+           "certified_over_empirical": vc / (p * box) if (p > 0 and vc) else None}
     print(json.dumps(out, indent=1))
     (OUT / a.name / "empirical.json").write_text(json.dumps(out, indent=1))
 

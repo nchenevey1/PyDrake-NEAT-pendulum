@@ -6,9 +6,10 @@
 the track (|x| ≤ 2.8 m) forever, under the exact discrete-time closed loop of
 `rollout.physics_step` (dt = 0.01 s, u = 100 N × policy output, real observation pipeline)?
 
-**Status: steps 1–3 done for the 45-param controller (certified ρ = 1.6152).** Per the stop rule, the
-comparisons (pruned, int8/int6, LQR), the 10⁶-sample check, the empirical region and the
-certified catch (steps 5–7) are prepared but not run. The maximal-level run is launched on Actions.
+**Status.** Steps 1–3, 5 and 7 are done for the 45-param controller (certified ρ = 1.6152,
+10⁶ × 60 s check: 0 failures, 100 % certified catch). Step 6 (pruned, int8, int6, LQR): setups,
+empirical regions and sampled bounds are done; their certificates and an independent recheck of
+the 45-param level are running on Actions (run 41167660323).
 
 ## Results
 
@@ -25,13 +26,54 @@ certified catch (steps 5–7) are prepared but not run. The maximal-level run is
 | Certified volume (state units m·rad²·(m/s)·(rad/s)²) | 1.08 × 10⁻⁶ (ρ = 1.6152); 2.57 × 10⁻⁷ at ρ = 1 |
 | Sanity: 20 000 samples of Ω_ρ (half in the outer 1 % shell), 60 s, repository episode kernel | **0 failures** |
 | Gap to the empirical bound | certified 1.6152 vs counterexample at 1.7643: **92 %** of the best level for this V (volume ratio (1.615/1.764)³ = 77 %) |
-| Sanity at ρ = 1.6152 | local: 40 000 samples (half in the outer 1 % shell), 60 s: **0 failures**; Actions 10⁶ × 60 s: see run log |
+| Sanity at ρ = 1.6152 | local: 40 000 samples (half in the outer 1 % shell), 60 s: **0 failures**; Actions: **10⁶ samples × 60 s, 0 failures** |
 
 What limits the region: not the safe set (ρ_safe = 34) but the one-step decrease. The slowest
 mode contracts by only 0.9974 per step, so V can shrink by at most ~0.5 % per step, and the
 nonlinearity (mostly the network's curvature acting through the force channel) cancels that
 margin at |z|² ≈ 1.76. The certified ellipsoid is thin in the angles (±0.03 rad) compared to
 the upright tolerance (±0.2 rad).
+
+## Certified catch and empirical region (steps 5, 7)
+
+| | 45-param MLP |
+|---|---|
+| Test swing-ups (256) that enter Ω_ρ with a valid prefix (= certified to succeed forever) | **256 / 256 (100 %)** |
+| Certified catch time: median (10–90 %, max) | **11.7 s** (7.5–13.7 s, max 15.2 s) |
+| Empirical region volume (60 s survival, 10⁶ samples) | 14.4 ± 0.16 |
+| Certified / empirical volume | **7.5 × 10⁻⁸** |
+
+The poles are upright by ~1.9 s, but the state reaches the certified ellipsoid only after the cart
+has drifted most of the way to x* ≈ 1 m through the slow 0.9974 mode. A certificate with a
+larger extent along x would catch much earlier.
+
+Empirical region: uniform samples of x ∈ [−2.8, 2.8], both angles within 0.2 rad, |ẋ| ≤ 7 m/s,
+|ω| ≤ 6 rad/s (box volume 1806); a sample counts if it stays upright and on the track for 60 s.
+At the box edges the survival rate is < 0.07 %, so the box contains nearly all of the region.
+The empirical region spans the whole track and several m/s; the certified ellipsoid spans
+±0.1 m and ±0.04 rad, and the ratio compounds over 6 dimensions.
+
+## Comparisons (step 6)
+
+Same V recipe for every controller (shifted Lyapunov equation, β = 0.999, same Q). ρ values are
+not comparable across controllers (different P); volumes are.
+
+| Controller | Params | Test success | Stable equilibrium x* | Spectral radius | ρ_safe | Sampled ρ bound | Certified ρ | Certified volume | Empirical volume | Cert./emp. |
+|---|---|---|---|---|---|---|---|---|---|---|
+| MLP (45) | 45 | 100 % | 0.996 m | 0.99743 | 34.0 | 1.764 | **1.6152** | 1.08e-6 | 14.4 | 7.5e-8 |
+| greedy-pruned | 43 | 99.2 % | 0.996 m | 0.99742 | 35.7 | 1.777 | running | | 14.4 | |
+| int8 | 45 | 91.4 % | 1.016 m | 0.99775 | 33.0 | 1.729 | running | | 15.4 | |
+| int6 | 43 | 54.7 % | **1.698 m** | 0.99882 | 29.7 | 1.429 | running | | 6.9 | |
+| balance LQR (saturated) | 6 gains | (balance only) | 0 | 0.98604 | 22.4 | 6.341 | running | | 8.3 | |
+
+Observations so far:
+* Pruning (2 weights removed) leaves the equilibrium and linearisation essentially unchanged.
+* int8 shifts the equilibrium by 2 cm and slows the slowest mode (0.99743 → 0.99775). int6 moves the
+  equilibrium to x* = 1.70 m (0.9 m from the track end), slows the mode to 0.99882, removes the
+  unstable equilibrium at −2.1 m, and halves the empirical region.
+* The classic LQR is linearly faster (0.986), but its empirical balance region is *smaller* than the
+  45-param network's (8.3 vs 14.4): its gains (up to 2155 N/rad) saturate the 100 N actuator at
+  ~0.05 rad.
 
 ## The certificate (what is proved, and how)
 
@@ -114,6 +156,7 @@ launches the job described there. Results are uploaded as artifacts and printed 
 | Launch | Run | Commit | Job | Status |
 |---|---|---|---|---|
 | smoke (`"smoke": true`) | [41163608223](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41163608223) | 748d0d8 | mlp45, ρ₀ = 0.05, 2 shards, 10⁴ samples | **success**: ρ = 0.05 complete (31k boxes), sanity 0/10⁴ failures |
+| job.json | [41167660323](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41167660323) | dcbe9e5 | recheck mlp45 at ρ₀ = 1.6152; pruned, int8, int6, LQR at their sampled bounds; 10 shards each (50 jobs), 10⁶ × 60 s sanity each | launched 2026-10-31 04:13 UTC, running (shared 20-job pool); not awaited |
 | job.json (no tag: agent sessions cannot push tags) | [41163866994](https://github.com/nchenevey1/PyDrake-NEAT-pendulum/actions/runs/41163866994) | 241a81b | mlp45, ρ₀ = 1.764 (sampled bound), 10 shards, grid 4, give-up width 1 % of \|z\|, then 10⁶ × 60 s sanity | **success**: all 10 shards complete (2–21 min each), combine ok, **ρ = 1.6152** (limiting shard 8; shard 4: 1.6172); 2154 proven counterexample centers, 220 boxes given up at 1 % width |
 
 ## What failed or is inconclusive
@@ -130,14 +173,15 @@ launches the job described there. Results are uploaded as artifacts and printed 
   differs from it by rounding (~1e-16 per step); this is not separately bounded.
 * No CROWN/auto_LiRPA tightening and no SOS comparison (optional steps) were attempted.
 
-## Next steps (prepared, not run)
+## Next steps
 
-1. Re-run the certificate at ρ₀ = 1.6152 on Actions as an independent recheck (job.json with `"rho0": 1.6151688736209255`).
-2. Optimise Q (and β) for certified volume; the sampled bound is a cheap proxy.
-3. Same pipeline for `mlp45_pruned` (regenerated with `evaluation.greedy_prune`), `mlp45_int8`,
-   `mlp45_int6`, `lqr`: `setup NAME`, then set `results/certify/job.json`.
-4. Empirical region (sampling the safe box, 60 s) and certified/empirical volume.
-5. Certified catch: first entry of the 256 test swing-ups into Ω_ρ.
+1. Read run 41167660323 (shard logs print each level; combine logs print the certificate and the
+   10⁶ sanity check), store `NAME/certificate_actions.json`, then
+   `python experiments/certify_balance.py catch NAME` and `empirical NAME` for the ratios.
+2. Optimise Q (and β) for certified volume, ideally elongated along x and the slow mode: this is
+   what limits the certified catch time and the certified/empirical ratio.
+3. Optional steps not attempted: CROWN tightening, SOS comparison, robustness intervals
+   (the trace already accepts interval g, masses and a force disturbance).
 
 ## Related work
 
