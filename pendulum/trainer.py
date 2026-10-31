@@ -9,6 +9,10 @@ Run directory layout (runs/<name>_s<seed>/):
   best_val.json        best policy so far on the target-physics validation set
   champion_latest.json latest top champion
   report.json          final test-set report of best_val (written at the end)
+
+Curricula (`curriculum.mode`): legacy physics curriculum, none, or the start-state curriculum
+(start_state: target physics, starts move back along a reference swing-up; see
+pendulum/curriculum.py). Saved policies carry the observation scales in meta["obs_scale"].
 """
 
 import json
@@ -23,13 +27,14 @@ import numba
 import numpy as np
 import yaml
 
-from .curriculum import Curriculum, CurriculumConfig
+from .curriculum import make_curriculum
 from .evaluation import evaluate_policies, full_report, selection_key, val_ics
 from .fitness import policy_scores, upright_ratio
 from .methods import make_method
 from .policy import GraphPolicy, pack
-from .rollout import S_BEST_STREAK, rollout
-from .task import DEFAULT_TASK, OBS_DIM, TARGET_PHYSICS, sample_initial_states
+from .rollout import S_BEST_STREAK, S_STEPS, rollout
+from .task import (DEFAULT_TASK, OBS_DIM, TARGET_PHYSICS, obs_scale, sample_initial_states,
+                   with_obs_scale)
 
 
 def _jsonable(x):
@@ -48,7 +53,8 @@ class Trainer:
     def __init__(self, cfg: dict, run_dir: Path, resume: bool = False):
         self.cfg = cfg
         self.dir = Path(run_dir)
-        self.task = DEFAULT_TASK
+        # Only the observation scales may differ from the task (config key `obs_scale`)
+        self.task = with_obs_scale(DEFAULT_TASK, cfg.get("obs_scale"))
         self.ckpt_path = self.dir / "checkpoint.pkl"
         numba.set_num_threads(max(1, min(int(cfg["threads"]), numba.config.NUMBA_NUM_THREADS)))
         if resume and self.ckpt_path.exists():
@@ -73,7 +79,7 @@ class Trainer:
                 "wall": 0.0,
                 "rng": rng,
                 "method": make_method(cfg["method"], cfg["method_cfg"], OBS_DIM, rng),
-                "curriculum": Curriculum(CurriculumConfig(**cfg["curriculum"])),
+                "curriculum": make_curriculum(cfg["curriculum"], self.task),
                 "best_val": None,           # (key, summary, policy dict, gen)
                 "milestones": {},
                 "target_reached_gen": None,
@@ -111,6 +117,9 @@ class Trainer:
             return False
         if b.get("wall_hours") is not None and st["wall"] + time.time() - seg_start >= 3600 * b["wall_hours"]:
             return False
+        if b.get("stop_val_success") is not None and st["best_val"] is not None \
+                and st["best_val"][1]["success_rate"] >= b["stop_val_success"]:
+            return False
         return True
 
     # ------------------------------------------------------------ main loop
@@ -127,20 +136,30 @@ class Trainer:
         try:
             while self._budget_left(seg_start) and not stop["flag"]:
                 t0 = time.time()
-                phys = curr.params()
                 pols = method.ask()
-                ics = sample_initial_states(tcfg["n_trials"], rng, task.ic_noise)
-                stats, steps = rollout(pack(pols), ics, phys, task)
+                if curr.mode == "start_state":
+                    stats, scores, steps, level_task = self._start_state_rollouts(pols, curr, rng, tcfg)
+                else:
+                    ics = sample_initial_states(tcfg["n_trials"], rng, task.ic_noise)
+                    stats, steps = rollout(pack(pols), ics, curr.params(), task)
+                    scores = policy_scores(stats, tcfg["fitness"], task)
+                    level_task = task
                 t_sim = time.time() - t0
-                scores = policy_scores(stats, tcfg["fitness"], task)
                 sizes = np.array([p.n_params for p in pols])
                 pen_sizes = method.penalty_sizes(pols)
                 fitness = scores / (1.0 + tcfg["size_penalty"] * pen_sizes)
                 method.tell(fitness, scores, stats)
-                ratios = upright_ratio(stats, task)
-                advanced = curr.update(ratios)
-                if advanced:
-                    method.on_physics_change()
+                ratios = upright_ratio(stats, level_task)
+                if curr.mode == "start_state":
+                    ib = int(np.argmax(fitness))
+                    full = float(np.mean(stats[ib, :, S_STEPS] >= level_task.max_steps))
+                    advanced, used = curr.update(st["gen"] + 1, st["env_steps"] + steps, full,
+                                                 lambda: method.champions()[0], rng)
+                    steps += used
+                else:
+                    advanced = curr.update(ratios)
+                    if advanced:
+                        method.on_physics_change()
                 if curr.at_target and st["target_reached_gen"] is None:
                     st["target_reached_gen"] = st["gen"] + 1
                 st["gen"] += 1
@@ -186,12 +205,26 @@ class Trainer:
             return None
         return self.finish()
 
+    def _start_state_rollouts(self, pols, curr, rng, tcfg):
+        """One generation of the start-state curriculum: common starts at the current level and
+        at a replayed level; score = weighted sum of the sparse score / level duration."""
+        pk = pack(pols)
+        scores = np.zeros(len(pols))
+        steps = 0
+        cur = None
+        for k, ics, tk, weight in curr.batches(rng, tcfg["n_trials"]):
+            stats, n = rollout(pk, ics, TARGET_PHYSICS, tk)
+            steps += n
+            scores += weight * policy_scores(stats, tcfg["fitness"], tk) / tk.duration
+            if cur is None:                      # the first batch is the current level
+                cur = (stats, tk)
+        return cur[0], scores, steps, cur[1]
+
     def _print(self, r):
-        p = r["phys"]
         info = " ".join(f"{k}={v}" for k, v in r["info"].items())
         bv = self.state["best_val"]
         bvs = f"val {bv[1]['success_rate']:.2f}@{bv[2]['n_params']}p" if bv else "val -"
-        print(f"g{r['gen']:05d} d={p['difficulty']:.3f} (g={p['g']:.2f} drag={p['drag']:.2f} F={p['max_force']:.0f})"
+        print(f"g{r['gen']:05d} {self.state['curriculum'].describe()}"
               f"{'^' if r['advanced'] else ' '} score max {r['score_max']:.2f} mean {r['score_mean']:.3f} "
               f"ratio {r['ratio_max']:.2f} best {r['best_params']}p | {bvs} | {info} | "
               f"{r['env_steps'] / 1e6:.0f}M steps {r['wall'] / 60:.1f}min", flush=True)
@@ -202,6 +235,8 @@ class Trainer:
         champs = [p.compacted() for p in st["method"].champions()]
         if not champs:
             return
+        for p in champs:
+            p.meta["obs_scale"] = obs_scale(self.task)
         res = evaluate_policies(champs, self.val_ics, TARGET_PHYSICS, self.task)
         st["eval_episodes"] = st.get("eval_episodes", 0) + len(champs) * len(self.val_ics)
         keys = [selection_key(r, p.n_params) for r, p in zip(res, champs)]
@@ -232,10 +267,11 @@ class Trainer:
             "generations": st["gen"], "env_steps": st["env_steps"], "episodes": st["episodes"],
             "wall_s": round(st["wall"], 1), "final_difficulty": st["curriculum"].difficulty,
             "target_reached_gen": st["target_reached_gen"], "milestones": st["milestones"],
+            "obs_scale": obs_scale(self.task), "curriculum": st["curriculum"].summary(),
         }
         if st["best_val"] is not None:
             pol = GraphPolicy.from_dict(st["best_val"][2])
-            rep = full_report(pol)
+            rep = full_report(pol, task=self.task)
             pr = rep.pop("_pruned_policy", None)
             if pr is not None:
                 pr.save(self.dir / "best_val_pruned.json")

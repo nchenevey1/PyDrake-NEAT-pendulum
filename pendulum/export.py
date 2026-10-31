@@ -13,7 +13,7 @@ import sys
 import numpy as np
 
 from .policy import ACT_RELU, ACT_TANH, GraphPolicy
-from .task import DEFAULT_TASK, TaskConfig
+from .task import DEFAULT_TASK, TaskConfig, task_for_policy
 
 
 def _f(x: float) -> str:
@@ -21,7 +21,9 @@ def _f(x: float) -> str:
     return f"{r}f"
 
 
-def to_c(p: GraphPolicy, task: TaskConfig = DEFAULT_TASK, name: str = "policy") -> str:
+def to_c(p: GraphPolicy, task: TaskConfig = None, name: str = "policy") -> str:
+    """`task` defaults to the task with the policy's stored observation scales."""
+    task = task if task is not None else task_for_policy(p)
     size = p.n_in + p.n_nodes
     rec = p.is_recurrent
     lines = [

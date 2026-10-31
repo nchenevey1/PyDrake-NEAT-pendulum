@@ -16,12 +16,12 @@ from pendulum.rollout import (rollout, physics_step, S_STEPS, S_REASON, S_FIRST_
                               S_MAX_HEIGHT)
 from pendulum.fitness import policy_scores
 from pendulum.evaluation import test_ics
-from pendulum.task import DEFAULT_TASK as T, TARGET_PHYSICS as P, observe
+from pendulum.task import DEFAULT_TASK as T, TARGET_PHYSICS as P, observe, task_for_policy
 
 pol = GraphPolicy.load(sys.argv[1] if len(sys.argv) > 1 else 'results/experiments/revcurr_mlp4_s1.json')
 ex = ClassicController.load('results/classic/controller.npz')
 T0 = T                                               # the classic controller uses the default scales
-T = replace(T, **pol.meta.get("obs_scale", {}))     # policies trained with rescaled observations
+T = task_for_policy(pol)                             # the observation scales stored with the policy
 rng = np.random.default_rng(0)
 full = T.max_steps
 

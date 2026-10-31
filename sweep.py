@@ -39,6 +39,7 @@ def main():
             queue.append((d, cmd))
     print(f"[sweep] {len(queue)} jobs, {args.jobs} parallel", flush=True)
     running = []
+    failed = []
     while queue or running:
         while queue and len(running) < args.jobs:
             d, cmd = queue.pop(0)
@@ -52,7 +53,12 @@ def main():
                 log.close()
                 running.remove(item)
                 print(f"[sweep] {'done' if p.returncode == 0 else f'FAILED rc={p.returncode}'} {d.name}", flush=True)
+                if p.returncode != 0:
+                    failed.append(d.name)
         time.sleep(5)
+    if failed:
+        print(f"[sweep] {len(failed)} failed: {' '.join(failed)}", flush=True)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

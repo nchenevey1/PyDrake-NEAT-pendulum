@@ -81,6 +81,43 @@ def greedy_prune(policy: GraphPolicy, ics: np.ndarray, tolerance: float = 0.0,
     return cur
 
 
+def weight_noise_success(policy: GraphPolicy, ics: np.ndarray, sigma: float, n: int = 64,
+                         seed: int = 0, physics: PhysicsParams = TARGET_PHYSICS,
+                         task: TaskConfig = DEFAULT_TASK) -> Dict[str, float]:
+    """Success of `n` neighbours with Gaussian weight noise of std `sigma` on every parameter
+    (width of the optimum; docs/DIAGNOSIS.md finding 4). Diagnostic only, never a training signal."""
+    rng = np.random.default_rng(seed)
+    th = policy.get_flat()
+    nbrs = [policy.with_flat(th + rng.normal(0.0, sigma, th.shape)) for _ in range(n)]
+    sr = np.array([r["success_rate"] for r in evaluate_policies(nbrs, ics, physics, task)])
+    return {"sigma": sigma, "n": n, "median": float(np.median(sr)), "min": float(sr.min()),
+            "max": float(sr.max())}
+
+
+def drake_check(policy: GraphPolicy, n: int = 16, task: TaskConfig = DEFAULT_TASK,
+                physics: PhysicsParams = TARGET_PHYSICS, duration: Optional[float] = None) -> Dict:
+    """Closed-loop episodes in the Drake MultibodyPlant (observation computed from Drake's state)
+    from the first `n` test starts, with the task's success rule. Requires pydrake."""
+    from .drake_env import DrakeEnv
+    from .task import observe
+    task = replace(task, duration=duration) if duration else task
+    env = DrakeEnv(physics, task)
+    wrap = lambda a: (a + np.pi) % (2 * np.pi) - np.pi
+    ok = []
+    for ic in test_ics(n, task):
+        s = env.reset(ic)
+        step = policy.make_stepper()
+        success = True
+        for k in range(1, task.max_steps + 1):
+            s = env.step(float(np.clip(step(observe(s, task)), -1, 1)))
+            up = abs(wrap(s[1] - np.pi)) < task.upright_tol and abs(wrap(s[2])) < task.upright_tol
+            if not np.all(np.isfinite(s)) or abs(s[0]) > task.limit_x or (k > task.swing_up_steps and not up):
+                success = False
+                break
+        ok.append(success)
+    return {"n": n, "successes": int(sum(ok)), "success_rate": float(np.mean(ok))}
+
+
 def full_report(policy: GraphPolicy, n_test: int = 256, task: TaskConfig = DEFAULT_TASK,
                 prune: bool = True) -> Dict:
     """Test-set report used for the final comparison."""
@@ -97,6 +134,8 @@ def full_report(policy: GraphPolicy, n_test: int = 256, task: TaskConfig = DEFAU
     }
     for bits in (8, 6, 4):
         rep[f"int{bits}_20s"] = evaluate_policies([policy.quantized(bits)], ics, task=task)[0]
+    if rep["test_20s"]["success_rate"] > 0:
+        rep["weight_noise_0.01"] = weight_noise_success(policy, ics, 0.01, task=task)
     if prune and rep["test_20s"]["success_rate"] > 0:
         # Prune on the validation set (never on test), then report on test
         pr = greedy_prune(policy, val_ics(128, task), tolerance=0.02, task=task)

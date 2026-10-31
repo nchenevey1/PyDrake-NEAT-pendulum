@@ -10,7 +10,7 @@ import numpy as np
 
 from pendulum.policy import GraphPolicy
 from pendulum.rollout import simulate, STAT_NAMES
-from pendulum.task import DEFAULT_TASK, TARGET_PHYSICS, TEST_SEED, fixed_initial_states
+from pendulum.task import DEFAULT_TASK, TARGET_PHYSICS, TEST_SEED, fixed_initial_states, task_for_policy
 
 
 def animate(traj, out, dt, fps=50):
@@ -50,7 +50,8 @@ def main():
     args = ap.parse_args()
     pol = GraphPolicy.load(args.policy)
     ic = np.zeros(6) if args.ic < 0 else fixed_initial_states(args.ic + 1, TEST_SEED, DEFAULT_TASK.ic_noise)[args.ic]
-    stats, traj = simulate(pol, ic, TARGET_PHYSICS)
+    task = task_for_policy(pol)          # the observation scales stored with the policy
+    stats, traj = simulate(pol, ic, TARGET_PHYSICS, task)
     print(pol.describe(), dict(zip(STAT_NAMES, np.round(stats, 3))))
     if args.drake:
         from pendulum.drake_env import DrakeEnv
@@ -61,7 +62,7 @@ def main():
         s = ic.copy()
         err = 0.0
         for k in range(1, len(traj)):
-            a = float(np.clip(step(obs_of(s)), -1, 1))
+            a = float(np.clip(step(obs_of(s, task)), -1, 1))
             s = env.step(a)
             err = max(err, np.abs(s - traj[k, :6]).max())
         print(f"Drake closed-loop replay: max state deviation from fast sim = {err:.2e}")

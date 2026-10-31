@@ -170,13 +170,22 @@ class GraphPolicy:
                            d["delayed"], d["out_pos"], d.get("action_mode", 0), d.get("meta", {}))
 
     def save(self, path) -> None:
+        """Write JSON. The observation scales are always stored (`meta["obs_scale"]`); a policy
+        that has none was built in this process and uses the task default."""
+        from .task import DEFAULT_TASK, obs_scale
+        self.meta.setdefault("obs_scale", obs_scale(DEFAULT_TASK))
         with open(path, "w") as f:
             json.dump(self.to_dict(), f)
 
     @staticmethod
     def load(path) -> "GraphPolicy":
+        """Read JSON. Files without stored observation scales predate them and were trained
+        with the legacy scales, which are filled in so that re-saving keeps them."""
+        from .task import LEGACY_OBS_SCALE
         with open(path) as f:
-            return GraphPolicy.from_dict(json.load(f))
+            p = GraphPolicy.from_dict(json.load(f))
+        p.meta.setdefault("obs_scale", dict(LEGACY_OBS_SCALE))
+        return p
 
     def describe(self) -> str:
         rec = " recurrent" if self.is_recurrent else ""

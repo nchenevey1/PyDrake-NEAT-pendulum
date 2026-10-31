@@ -9,7 +9,7 @@ easier *training* physics via the curriculum.
 Values mirror the original `legacy/config.py`.
 """
 
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict, field, replace
 from typing import Dict
 
 import numpy as np
@@ -37,8 +37,8 @@ class TaskConfig:
     limit_x: float = 2.8           # track half-length [m]; leaving it ends the episode
     swing_up_time: float = 2.5     # after this, any non-upright step ends the episode [s]
     upright_tol: float = 0.2       # |angle error| threshold for both poles [rad]
-    max_v_cart: float = 50.0       # observation scaling
-    max_w_pole: float = 90.0       # observation scaling
+    max_v_cart: float = 12.0       # observation scaling: cart velocity [m/s] mapped to +-1
+    max_w_pole: float = 12.0       # observation scaling: pole angular velocities [rad/s] mapped to +-1
     ic_noise: float = 0.05         # half-width of uniform IC perturbation around hanging rest
 
     @property
@@ -61,6 +61,34 @@ class TaskConfig:
 
 
 DEFAULT_TASK = TaskConfig()
+
+# Observation scales. The default (12) covers the real velocity range of a swing-up (|v| <= ~10);
+# see docs/DIAGNOSIS.md section 3. Policies saved before the scales were stored with the policy
+# were all trained with the legacy scales (50 m/s, 90 rad/s), which compress that range to ~+-0.1.
+OBS_SCALE_KEYS = ("max_v_cart", "max_w_pole")
+LEGACY_OBS_SCALE = {"max_v_cart": 50.0, "max_w_pole": 90.0}
+
+
+def obs_scale(task: TaskConfig = DEFAULT_TASK) -> Dict[str, float]:
+    """The observation scales of a task, as stored in a policy's `meta["obs_scale"]`."""
+    return {k: float(getattr(task, k)) for k in OBS_SCALE_KEYS}
+
+
+def with_obs_scale(task: TaskConfig, scale: Dict[str, float] = None) -> TaskConfig:
+    """`task` with its observation scales replaced (only the scales may differ from the task)."""
+    scale = scale or {}
+    bad = set(scale) - set(OBS_SCALE_KEYS)
+    if bad:
+        raise ValueError(f"only observation scales may be changed, got {sorted(bad)}")
+    return replace(task, **{k: float(v) for k, v in scale.items()})
+
+
+def task_for_policy(policy, task: TaskConfig = DEFAULT_TASK) -> TaskConfig:
+    """The task with the observation scales stored in the policy's `meta["obs_scale"]`.
+    `GraphPolicy.load` fills in the legacy scales for files that predate stored scales; a policy
+    built in this process without stored scales uses the task's own."""
+    return with_obs_scale(task, policy.meta.get("obs_scale"))
+
 
 # Observation layout (9-D, identical to the legacy environment):
 #   [x/Lx, clip(xd/Vmax), sin th1, cos th1, clip(w1/Wmax), sin th2, cos th2, clip(w2/Wmax), cos(th1 - th2)]

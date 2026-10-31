@@ -1,0 +1,34 @@
+# CMA-ES on a fixed mlp:4 policy (45 params) + start-state curriculum (S2) with adaptive step.
+# Same settings as experiments/reverse_curriculum.py (mlp:4 seed 0 reached 100 % test with
+# velocity scale 12), now driven by run.py / sweep.py with checkpoints and a report.
+method: cmaes
+method_cfg:
+  arch: "mlp:4"
+  popsize: 64
+  sigma0: 0.5
+budget:
+  generations: null
+  env_steps: 4000000000      # 4B training env steps (incl. mastery checks)
+  wall_hours: 5.5            # GitHub-hosted job limit is 6 h
+  stop_val_success: 0.99     # as in the experiment script: stop at >= 99 % validation success
+train:
+  n_trials: 8                # 4 starts at the current level + 4 at a replayed level
+  fitness: streak_smooth
+  size_penalty: 0.0          # competence first (fixed topology: no effect on CMA-ES ranks)
+curriculum:
+  mode: start_state
+  start_state:
+    k_start: 210
+    step: 5
+    adaptive_step: true
+    min_step: 1
+    mastery_every: 5
+    mastery_starts: 16
+    mastery_frac: 0.8
+    stuck_gens: 300
+    replay_frac: 0.5
+eval:
+  every: 25
+  n_val: 256
+checkpoint_every: 25
+print_every: 50

@@ -4,6 +4,14 @@ Level k: episodes start at the classic expert's nominal swing-up state S_nom[k] 
 +-0.05 IC noise) with the remaining swing-up deadline (2.5 s - k*dt). k = 0 is exactly the
 real task. k decreases by `step` when the best candidate fully succeeds (survives the whole
 episode) on >= `pass_frac` of the generation's trials. Same sparse score, same CMA-ES code.
+
+This is the original experiment script, kept to reproduce the results in
+results/experiments/README.md. The curriculum now lives in pendulum/curriculum.py
+(`curriculum.mode: start_state`, with adaptive step, checkpoints and a report): use
+`python run.py configs/cmaes_mlp4_revcurr.yaml --seed 0`.
+
+4th argument: velocity observation scale. Omitted = the old default (50, 90) used by the runs
+logged without it; the task default is now 12.
 """
 import sys, time, json, numpy as np, numba
 from dataclasses import replace
@@ -14,14 +22,13 @@ from pendulum.policy import pack
 from pendulum.rollout import rollout, S_STEPS
 from pendulum.fitness import policy_scores
 from pendulum.evaluation import evaluate_policies, val_ics, test_ics
-from pendulum.task import DEFAULT_TASK as T, TARGET_PHYSICS as P
+from pendulum.task import DEFAULT_TASK as T, TARGET_PHYSICS as P, LEGACY_OBS_SCALE, with_obs_scale
 numba.set_num_threads(1)
 arch = sys.argv[1]; seed = int(sys.argv[2]); budget = float(sys.argv[3]) * 1e9
 # optional 4th argument: velocity observation scale (cart m/s and pole rad/s mapped to +-1);
 # the task default (50, 90) compresses the real velocity range (~+-10) to ~+-0.1
 vscale = float(sys.argv[4]) if len(sys.argv) > 4 else None
-if vscale:
-    T = replace(T, max_v_cart=vscale, max_w_pole=vscale)
+T = replace(T, max_v_cart=vscale, max_w_pole=vscale) if vscale else with_obs_scale(T, LEGACY_OBS_SCALE)
 tag = f'{arch.replace(":", "")}_s{seed}' + (f'_v{vscale:g}' if vscale else '')
 step, pass_frac, K = 5, 0.6, 8
 ex = ClassicController.load('results/classic/controller.npz')
