@@ -7,7 +7,7 @@ pendulum/task.py        task definition (limits, tolerances, start distribution,
 pendulum/rollout.py     numba physics + network + episode kernel, parallel over (policy, start)
 pendulum/policy.py      GraphPolicy (all methods), MLP/RNN builders, quantization, compaction
 pendulum/fitness.py     sparse training scores
-pendulum/curriculum.py  physics curriculum (baseline)
+pendulum/curriculum.py  physics curriculum (baseline) and start-state curriculum (mode start_state)
 pendulum/evaluation.py  real-task evaluation, model selection, greedy pruning
 pendulum/trainer.py     training loop: log.jsonl, checkpoint/resume, validation, final report
 pendulum/methods/       NEAT, CMA-ES, OpenAI-ES, MAP-Elites, NEAT->CMA
@@ -16,6 +16,8 @@ pendulum/drake_env.py   PyDrake reference simulator (tests, visual cross-check)
 pendulum/export.py      C export of a policy (edge deployment)
 experiments/            diagnostic scripts (curricula, distillation, balance-only)
 configs/                experiment definitions (see configs/README.md)
+sweeps/                 sweep plans for GitHub Actions (.github/workflows/sweep.yml)
+ci/                     sweep plan -> job matrix, run summary table
 legacy/                 original implementation, kept for reference
 tests/                  equivalence and determinism tests (pytest)
 ```
@@ -45,6 +47,10 @@ drift into saturated bang-bang networks and keep weights quantizable.
 * Resuming from a checkpoint reproduces an uninterrupted run exactly, for every method.
 * The exported C controller matches Python (float32 tolerance).
 * The classic controller solves the real task.
+* Start-state curriculum: level k = 0 is the real task; mastery advances only on check
+  generations; a back-off halves the step (5 → 2 → 1); resume is exact.
+* Every saved policy stores its observation scales; files without them load with the legacy
+  scales (50, 90). Validation and test starts are disjoint.
 
 ## Speed
 
@@ -74,3 +80,34 @@ A 1200-genome NEAT generation takes ~0.4 s; most of that is NEAT bookkeeping in 
 
 Old checkpoints can be evaluated with `python evaluate.py path/to/best_model.pth --legacy`
 (requires torch).
+
+## Observation scales and saved policies
+
+The task default is now velocity scale 12 (cart m/s and pole rad/s mapped to ±1). Every
+saved policy JSON has `meta.obs_scale`; `evaluate.py`, `visualize.py`, `pendulum.export` and
+`experiments/diagnose.py` read it (`task_for_policy`). Files written before the scales were
+stored load with the legacy scales (50, 90), which is what they were trained with. A config can
+set `obs_scale: {max_v_cart: 50, max_w_pole: 90}` for ablations; nothing else of the task can
+be changed. The classic reference controller is unaffected (100 % test at scale 12).
+
+## Running sweeps on GitHub Actions
+
+`.github/workflows/sweep.yml` runs on pushed tags `sweep-<plan>-<n>` (the workflow file of the
+tagged commit is used) and on `workflow_dispatch` (only once the file is on the default
+branch). It reads `sweeps/<plan>.yaml`, runs one job per (config, seed) on a 4-vCPU runner
+(`sweep.py --jobs 4`, `threads=4`, 340 min timeout), then `evaluate.py --drake 16` on the
+selected policy (`verify.json`: test 20 s / 60 s, int8, weight noise σ = 0.01, Drake 20 s / 60 s),
+and uploads `runs/<name>_s<seed>/` without checkpoints. The `collect` job writes
+`summary.md`/`summary.json` (artifact `summary-<plan>`).
+
+```bash
+git tag sweep-smoke-1 && git push origin sweep-smoke-1
+```
+
+```bash
+gh run list --workflow sweep.yml
+```
+
+```bash
+gh run download <run-id> -n summary-reliability-mlp4 -D runs_ci/
+```

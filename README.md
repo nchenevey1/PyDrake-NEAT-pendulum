@@ -57,16 +57,23 @@ python sweep.py --jobs 4 --seeds 0 1 -- configs/*.yaml
 python compare.py
 ```
 
-Start-state curriculum experiment (architecture, seed, budget in billions of env steps):
+Start-state curriculum (S2, adaptive step, resumable, writes `report.json`):
 
 ```bash
-python experiments/reverse_curriculum.py mlp:4 0 2.0
+python run.py configs/cmaes_mlp4_revcurr.yaml --seed 0
+```
+
+Run a sweep plan on GitHub Actions (`sweeps/<plan>.yaml`; see
+[IMPLEMENTATION_NOTES](docs/IMPLEMENTATION_NOTES.md#running-sweeps-on-github-actions)):
+
+```bash
+git tag sweep-reliability-mlp4-1 && git push origin sweep-reliability-mlp4-1
 ```
 
 Evaluate, view or export a trained policy:
 
 ```bash
-python evaluate.py runs/cmaes_mlp4_s0/best_val.json
+python evaluate.py runs/cmaes_mlp4_s0/best_val.json --drake 16
 ```
 
 ```bash

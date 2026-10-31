@@ -17,3 +17,20 @@ Run from the repository root, e.g. `python experiments/reverse_curriculum.py mlp
 
 Earlier logs are in this folder; logs written after the switch to `.gitignore` are kept locally only.
 Design conclusions: [docs/CURRICULUM.md](../../docs/CURRICULUM.md).
+
+## Reliability of the start-state curriculum (S2 + adaptive step), launched via GitHub Actions
+
+Code: `configs/cmaes_mlp4_revcurr.yaml`, `configs/cmaes_mlp8_revcurr.yaml` (trainer mode
+`curriculum.mode: start_state`, adaptive back-off step 5 → 2 → 1, velocity scale 12,
+256 validation starts, stop at ≥ 99 % validation). Plans: `sweeps/reliability-mlp4.yaml`,
+`sweeps/reliability-mlp8.yaml` (seeds 0–4, 4B env steps each). Goal: ≥ 90 % test in ≥ 3 of 5 seeds.
+
+| Tag | Plan | Commit | Actions run | Status |
+|---|---|---|---|---|
+| `sweep-smoke-1` | smoke (2 seeds, 20M steps) | branch `claude/charming-noether-2plokb` (code at `f218abf`) | – | **not launched**: the session could not push tags or dispatch workflows |
+| `sweep-reliability-mlp4-1` | reliability-mlp4 | same | – | not launched |
+| `sweep-reliability-mlp8-1` | reliability-mlp8 | same | – | not launched |
+
+Local smoke tests only (20–30M steps, 2 seeds; no results, pipeline check): curriculum moves
+from 2.10 s to 1.75–1.90 s, report/verify files written. When the runs finish, add one row per
+seed (level reached, test 20 s / 60 s, Drake, int8, weight noise σ = 0.01) and keep the rows above.

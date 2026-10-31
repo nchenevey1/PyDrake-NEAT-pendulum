@@ -70,8 +70,9 @@ Values were set once from first principles and are **not tuned**:
 1. **Deadline slack (combined curriculum).** At every level give the remaining time plus a
    slack (e.g. +1 s). After reaching k = 0, shrink the slack to 0 with the same mastery rule
    (step 0.1 s). This uses each knob where it worked.
-2. **Adaptive step.** Progress slows in the early, energy-pumping part of the swing-up. Halve the
-   start-time step after each back-off (minimum 0.01 s).
+2. **Adaptive step** (implemented: `curriculum.start_state.adaptive_step`). Progress slows in the
+   early, energy-pumping part of the swing-up. Halve the start-time step after each back-off
+   (5 → 2 → 1 control steps, minimum 0.01 s).
 3. **Final phase at the real task.** Keep 25 % replay of earlier levels until the budget ends;
    select models on a larger validation set (256 starts).
 4. **No reference (S3).** Build start states by random walks backward from upright, as in

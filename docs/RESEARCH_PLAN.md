@@ -73,10 +73,12 @@ are not carried forward: they underperformed CMA-ES on the same signal.
 
 ## Next steps
 
-- [ ] Make velocity scale 12 the default observation and store the scales with every policy (all methods, all curricula)
-- [ ] Adaptive start-time step after a back-off (3 of 4 rescaled runs stalled at 0.55 s)
-- [ ] Enlarge the validation set (64 → 256 starts): at low success rates it mis-ranked policies (3 % val vs 9 % test)
-- [ ] Add the start-state curriculum (S2) and the mastery advancement rule to `pendulum/curriculum.py` as a config mode
+- [x] Make velocity scale 12 the default observation and store the scales with every policy (all methods, all curricula)
+- [x] Adaptive start-time step after a back-off (3 of 4 rescaled runs stalled at 0.55 s)
+- [x] Enlarge the validation set (64 → 256 starts): at low success rates it mis-ranked policies (3 % val vs 9 % test)
+- [x] Add the start-state curriculum (S2) and the mastery advancement rule to `pendulum/curriculum.py` as a config mode
+- [x] GitHub Actions sweep workflow (`sweeps/<plan>.yaml`, tag `sweep-<plan>-<n>`)
+- [ ] Reliability run: mlp:4 and mlp:8, 5 seeds, 4B steps (plans `reliability-mlp4`, `reliability-mlp8`; not yet launched)
 - [ ] Implement S5 (deadline slack) and S3 (no reference trajectory)
 - [ ] Run the matrix (S0, S2, S3, S4, S5 × size ladder × CMA-ES/NEAT × 3 seeds)
 - [ ] Compression pipeline (prune → fine-tune → quantize) and Pareto plot in `compare.py`

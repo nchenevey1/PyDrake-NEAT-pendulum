@@ -14,7 +14,7 @@ Defined in `pendulum/task.py`.
 | Upright | both poles within 0.2 rad of vertical |
 | Track | \|x\| ≤ 2.8 m |
 | Episode | 20 s |
-| Observation | 9 values: x, ẋ, sin/cos θ1, ω1, sin/cos θ2, ω2, cos(θ1 − θ2), scaled to ~[−1, 1] |
+| Observation | 9 values: x, ẋ, sin/cos θ1, ω1, sin/cos θ2, ω2, cos(θ1 − θ2), scaled to ~[−1, 1] (velocities ÷ 12, clipped; stored with each policy) |
 | Action | one value in [−1, 1], times 100 N |
 
 An episode ends early if the cart leaves the track, or if the poles are not upright at any
@@ -43,13 +43,15 @@ rule ends the episode.
 | Set | Size | Used for |
 |---|---|---|
 | Training starts | 5–8 new random starts per generation, shared by all candidates | the score |
-| Validation | 64 fixed starts | model selection during training |
+| Validation | 256 fixed starts (64 before 2026-10-31), disjoint from test | model selection during training |
 | Test | 256 fixed starts, never seen in training or selection | all reported numbers |
 
 The final report for a controller (`evaluate.py`) contains:
 * test success at 20 s and 60 s;
 * success with wide starts (±0.2) and from exact rest;
 * success after int8, int6 and int4 quantization;
+* success under weight noise σ = 0.01 (median of 64 perturbed copies);
+* with `--drake N`: N test starts closed-loop in Drake, at 20 s and 60 s;
 * size after greedy pruning, and its success;
 * parameter count (non-zero weights + biases).
 
